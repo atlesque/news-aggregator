@@ -70,7 +70,7 @@ function thumb(src, eager = false) {
   return fig;
 }
 
-function storyEl(s, { lead = false, showRegion = true, image = true } = {}) {
+function storyEl(s, { lead = false, showRegion = true, image = true, summary = true, allSources = true } = {}) {
   const primary = s.sources[0];
   const link = (src, text, extra = {}) =>
     h("a", { href: src.url, target: "_blank", rel: "noopener", "aria-describedby": "new-tab-hint", ...extra }, text);
@@ -90,14 +90,19 @@ function storyEl(s, { lead = false, showRegion = true, image = true } = {}) {
         showRegion ? h("span", { class: "region" }, regionLabel(s.region)) : null,
       ),
       h("h3", { lang: s.lang || null }, primary ? link(primary, s.headline) : s.headline),
-      s.summary ? h("p", { class: "summary", lang: s.lang || null }, s.summary) : null,
+      summary && s.summary ? h("p", { class: "summary", lang: s.lang || null }, s.summary) : null,
       h(
         "div",
         { class: "meta" },
         h("time", { datetime: s.updatedAt, title: new Date(s.updatedAt).toLocaleString("en-GB") }, ago(s.updatedAt)),
         h("span", { class: "dot", "aria-hidden": "true" }),
-        h("span", { class: "sources" }, ...s.sources.flatMap((src, i) => [i ? ", " : "", link(src, src.name)])),
-        s.sources.length >= 3 ? h("span", { class: "count" }, `${s.sources.length} reports`) : null,
+        allSources
+          ? h("span", { class: "sources" }, ...s.sources.flatMap((src, i) => [i ? ", " : "", link(src, src.name)]))
+          : primary
+            ? h("span", { class: "sources" }, link(primary, primary.name))
+            : null,
+        allSources && s.sources.length >= 3 ? h("span", { class: "count" }, `${s.sources.length} reports`) : null,
+        !allSources && s.sources.length > 1 ? h("span", { class: "count", title: s.sources.slice(1).map((x) => x.name).join(", ") }, `+${s.sources.length - 1}`) : null,
       ),
     ),
   );
@@ -136,7 +141,6 @@ function render() {
   });
   const regionName = state.region ? regionLabel(state.region) : "";
   document.getElementById("page-title").textContent = regionName || "Latest news";
-  document.getElementById("tagline").hidden = !!state.region;
   document.title = regionName ? `${regionName} · ${data.site.title}` : data.site.title;
 
   const regionStories = data.stories.filter((s) => !state.region || s.region === state.region);
@@ -162,7 +166,7 @@ function render() {
       { class: "top", "aria-labelledby": "h-top" },
       h("h2", { id: "h-top", class: "sr-only" }, "Top stories"),
       storyEl(lead, { lead: true, showRegion }),
-      top.length ? h("ul", { class: "side", role: "list" }, top.map((s) => h("li", {}, storyEl(s, { showRegion })))) : null,
+      top.length ? h("ul", { class: "side", role: "list" }, top.map((s) => h("li", {}, storyEl(s, { showRegion, summary: false, allSources: false })))) : null,
     ),
   );
   const shown = new Set([lead, ...top].map((s) => s.id));
@@ -202,11 +206,7 @@ function render() {
 function renderChrome() {
   document.getElementById("site-title").textContent = data.site.title;
   document.querySelector(".brand").setAttribute("aria-label", `${data.site.title}, home`);
-  document.getElementById("tagline").textContent = data.site.tagline;
-  const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
-  document.getElementById("edition").textContent = data.generatedAt
-    ? `${today} · Updated ${clock(data.generatedAt)}, next around ${clock(data.nextUpdateAt)}`
-    : today;
+  document.getElementById("updated").textContent = data.generatedAt ? `Updated ${clock(data.generatedAt)}.` : "";
 
   const navItem = (id, label) => h("li", {}, h("a", { href: `#${id}`, "data-region": id }, icon(id), h("span", {}, label)));
   document.getElementById("section-nav").replaceChildren(navItem("", "Home"), ...data.site.regions.map((r) => navItem(r.id, r.label)));
