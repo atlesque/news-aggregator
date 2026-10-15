@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atlesque News</title>
+    <meta name="description" content="Bruges, Belgium, Europe and the world. Hourly, deduplicated and without the clickbait." />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/app.css" />
+    <link rel="preload" href="/api/public/news.json" as="fetch" crossorigin="anonymous" />
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="wrap topbar-inner">
+        <span id="today"></span>
+        <span id="updated" class="muted"></span>
+      </div>
+    </div>
+
+    <header class="masthead wrap">
+      <h1 id="site-title"><a href="#">Atlesque News</a></h1>
+      <p id="tagline" class="tagline"></p>
+    </header>
+
+    <nav class="sections wrap" aria-label="Sections">
+      <ul id="section-nav">
+        <li><a href="#" data-region="">Front page</a></li>
+      </ul>
+    </nav>
+
+    <div id="breaking" class="breaking" hidden>
+      <div class="wrap breaking-inner">
+        <span class="breaking-label">Breaking</span>
+        <ul id="breaking-list"></ul>
+      </div>
+    </div>
+
+    <main id="main" class="wrap">
+      <p class="loading">Loading the latest news…</p>
+    </main>
+
+    <footer class="wrap footer">
+      <p>
+        Headlines and summaries are rewritten by AI from the linked reports, to keep them short, neutral and free of
+        clickbait. Mistakes are possible: follow the source links for the full story.
+      </p>
+      <p class="muted">Updated every hour. Duplicate reports of the same event are merged into one story.</p>
+    </footer>
+
+    <noscript><p class="wrap">This page needs JavaScript to show the news.</p></noscript>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

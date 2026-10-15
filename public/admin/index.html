@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Admin · News</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/admin/admin.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <strong>News admin</strong>
+      <nav>
+        <a href="#status">Status</a>
+        <a href="#sources">Sources</a>
+        <a href="#keys">API keys</a>
+        <a href="#stories">Stories</a>
+        <a href="#settings">Settings</a>
+        <a href="/" target="_blank" rel="noopener">View site ↗</a>
+      </nav>
+      <span id="who" class="muted"></span>
+    </header>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <main id="app"><p class="muted">Loading…</p></main>
+    <script src="/admin/admin.js" defer></script>
+  </body>
+</html>

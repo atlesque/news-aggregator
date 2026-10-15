@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "news-aggregator",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+
+  "routes": [{ "pattern": "news.atlesque.dev", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+
+  // The front page, its CSS/JS and the admin shell are static assets: served from the edge
+  // without running the Worker, so they cost nothing and don't count against the free
+  // plan's 100k requests/day. Only the JSON/RSS endpoints and /admin run the Worker.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/admin", "/admin/*"],
+    "not_found_handling": "404-page"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "news-aggregator",
+      "database_id": "4803e069-e6d1-4612-8e94-f16b303927d4",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Summaries, translation, ranking (text model) and deduplication (embeddings).
+  "ai": { "binding": "AI" },
+
+  // The hourly refresh. Each source fetch, embedding batch and AI batch is its own step,
+  // so every step stays well inside the free plan's 10 ms CPU budget and retries on its own.
+  "workflows": [{ "name": "news-refresh", "binding": "REFRESH", "class_name": "RefreshWorkflow" }],
+  "triggers": { "crons": ["7 * * * *"] },
+
+  // Per-API-key limit (per Cloudflare location). Must be 10 or 60 seconds.
+  "ratelimits": [{ "name": "API_LIMITER", "namespace_id": "4201", "simple": { "limit": 30, "period": 60 } }],
+
+  "vars": {
+    "SITE_URL": "https://news.atlesque.dev",
+    // Cloudflare Access application covering /admin and /api/admin/* on this hostname.
+    // ACCESS_AUD is its "Application Audience (AUD) Tag". While either is empty, admin is off.
+    "ACCESS_TEAM_DOMAIN": "https://atlesque.cloudflareaccess.com",
+    "ACCESS_AUD": "",
+    // Optional comma-separated allow-list on top of the Access policy. Empty = whoever Access lets in.
+    "ADMIN_EMAILS": "alexander@atlesque.media"
+  }
+}

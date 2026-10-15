@@ -1,0 +1,25 @@
+{
+  "name": "news-aggregator",
+  "private": true,
+  "license": "MIT",
+  "description": "A calm, AI-summarised local news front page and API on Cloudflare Workers, D1, Workflows and Workers AI.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "types": "wrangler types --strict-vars=false",
+    "test": "node --test \"test/*.test.ts\"",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "dependencies": {
+    "jose": "^6.2.12"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.150.0"
+  }
+}

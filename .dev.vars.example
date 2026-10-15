@@ -1,0 +1,3 @@
+# Local development only. Copy to .dev.vars. Never deployed.
+# Skips the Cloudflare Access check so /admin works on localhost.
+DEV_DISABLE_ACCESS=true
