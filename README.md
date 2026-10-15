@@ -160,6 +160,8 @@ pnpm typecheck
 5. Put the application's AUD tag in `ACCESS_AUD` and your team domain in `ACCESS_TEAM_DOMAIN`, then deploy again.
 6. Edit the starter sources and region labels in `/admin` to match where you live.
 
+To deploy on every push, connect the repository under Workers → your Worker → Settings → Builds, with `main` as the production branch and `pnpm run deploy` as the deploy command.
+
 ## License
 
 MIT
