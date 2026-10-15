@@ -44,7 +44,7 @@ Every source also takes `maxItems`, `maxAgeHours`, `includeKeywords` and `exclud
 
 The starter set (`migrations/0001_init.sql`):
 
-- **Bruges:** HLN Brugge, Bing News "Brugge", Focus-WTV
+- **Bruges:** HLN Brugge, KW (Krant van West-Vlaanderen), Focus-WTV and a Bing News "Brugge" search, all through Bing News, because HLN blocks Cloudflare Workflows
 - **Belgium:** VRT NWS, The Brussels Times
 - **Europe:** Euronews, Politico Europe
 - **World:** BBC World, The Guardian
