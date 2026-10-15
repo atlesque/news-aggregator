@@ -1,4 +1,4 @@
-// Front page. Renders /api/public/news.json; no framework, no build step.
+// Front page and story pages. Renders /api/public/news.json; no framework, no build step.
 
 const TOPIC_LABELS = {
   politics: "Politics", economy: "Economy", society: "Society", crime: "Crime & justice", health: "Health",
@@ -17,7 +17,10 @@ const ICONS = {
 };
 
 let data = null;
-let state = { region: "", topic: "" };
+let state = { region: "", topic: "", story: null };
+// Where each list view was scrolled to, so "Back" from a story returns to the same spot.
+const listScroll = new Map();
+let currentHash = location.hash;
 
 function icon(id) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -70,40 +73,109 @@ function thumb(src, eager = false) {
   return fig;
 }
 
-function storyEl(s, { lead = false, showRegion = true, image = true, summary = true, allSources = true } = {}) {
+// A story in a list: headline only. It opens the story's own page with the summary and sources.
+function storyEl(s, { lead = false, showRegion = true, image = true } = {}) {
   const primary = s.sources[0];
-  const link = (src, text, extra = {}) =>
-    h("a", { href: src.url, target: "_blank", rel: "noopener", "aria-describedby": "new-tab-hint", ...extra }, text);
   return h(
     "article",
-    { class: `story priority-${s.priority}${lead ? " lead" : ""}`, id: `story-${s.id}` },
+    { class: `story priority-${s.priority}${lead ? " lead" : ""}`, "data-story": s.id },
     image ? thumb(s.image, lead) : null,
     h(
       "div",
       { class: "body" },
-      h(
-        "div",
-        { class: "kicker" },
-        s.breaking ? h("span", { class: "badge breaking-badge" }, "Breaking") : null,
-        !s.breaking && s.priority === "high" ? h("span", { class: "badge high-badge" }, "Important") : null,
-        h("span", {}, TOPIC_LABELS[s.topic] ?? s.topic),
-        showRegion ? h("span", { class: "region" }, regionLabel(s.region)) : null,
-      ),
-      h("h3", { lang: s.lang || null }, primary ? link(primary, s.headline) : s.headline),
-      summary && s.summary ? h("p", { class: "summary", lang: s.lang || null }, s.summary) : null,
+      kicker(s, showRegion),
+      h("h3", { lang: s.lang || null }, h("a", { href: `#story-${s.id}` }, s.headline)),
       h(
         "div",
         { class: "meta" },
         h("time", { datetime: s.updatedAt, title: new Date(s.updatedAt).toLocaleString("en-GB") }, ago(s.updatedAt)),
-        h("span", { class: "dot", "aria-hidden": "true" }),
-        allSources
-          ? h("span", { class: "sources" }, ...s.sources.flatMap((src, i) => [i ? ", " : "", link(src, src.name)]))
-          : primary
-            ? h("span", { class: "sources" }, link(primary, primary.name))
-            : null,
-        allSources && s.sources.length >= 3 ? h("span", { class: "count" }, `${s.sources.length} reports`) : null,
-        !allSources && s.sources.length > 1 ? h("span", { class: "count", title: s.sources.slice(1).map((x) => x.name).join(", ") }, `+${s.sources.length - 1}`) : null,
+        primary ? h("span", { class: "dot", "aria-hidden": "true" }) : null,
+        primary ? h("span", {}, primary.name) : null,
+        s.sources.length > 1 ? h("span", { class: "count" }, `+${s.sources.length - 1}`) : null,
       ),
+    ),
+  );
+}
+
+function kicker(s, showRegion = true) {
+  return h(
+    "div",
+    { class: "kicker" },
+    s.breaking ? h("span", { class: "badge breaking-badge" }, "Breaking") : null,
+    !s.breaking && s.priority === "high" ? h("span", { class: "badge high-badge" }, "Important") : null,
+    h("span", {}, TOPIC_LABELS[s.topic] ?? s.topic),
+    showRegion ? h("span", { class: "region" }, regionLabel(s.region)) : null,
+  );
+}
+
+// A story's own page: the AI summary, a clear way out to the original report, and the other reports.
+function renderStory(id) {
+  const content = document.getElementById("content");
+  const s = data.stories.find((x) => String(x.id) === id);
+  document.querySelectorAll("#section-nav a").forEach((a) => a.removeAttribute("aria-current"));
+  document.getElementById("breaking").hidden = true;
+  document.getElementById("page-title").hidden = true;
+  document.getElementById("status").textContent = "";
+
+  const backHash = listScroll.has(state.backTo) ? state.backTo : "";
+  const backLabel = backHash && backHash !== "#" ? regionLabel(backHash.slice(1)) : "Home";
+  const back = h(
+    "a",
+    {
+      class: "back",
+      href: backHash || "#",
+      // Use the browser's own back step when we came from a list, so its scroll position and history stay intact.
+      onclick: (e) => {
+        if (backHash) {
+          e.preventDefault();
+          history.back();
+        }
+      },
+    },
+    h("span", { "aria-hidden": "true" }, "←"),
+    ` Back to ${backLabel}`,
+  );
+
+  if (!s) {
+    document.title = data.site.title;
+    content.replaceChildren(
+      h("div", { class: "detail" }, back, h("h1", {}, "Story not found"), h("p", { class: "muted" }, "This story is no longer on the front page. News older than a day and a half drops off.")),
+    );
+    return;
+  }
+
+  document.title = `${s.headline} · ${data.site.title}`;
+  const [primary, ...others] = s.sources;
+  const ext = (src, ...children) =>
+    h("a", { href: src.url, target: "_blank", rel: "noopener", "aria-describedby": "new-tab-hint" }, ...children);
+  content.replaceChildren(
+    h(
+      "article",
+      { class: "detail", "aria-labelledby": "story-title" },
+      back,
+      kicker(s),
+      h("h1", { id: "story-title", lang: s.lang || null }, s.headline),
+      h(
+        "p",
+        { class: "meta" },
+        h("time", { datetime: s.updatedAt, title: new Date(s.updatedAt).toLocaleString("en-GB") }, `Updated ${ago(s.updatedAt)}`),
+        s.sources.length > 1 ? h("span", { class: "dot", "aria-hidden": "true" }) : null,
+        s.sources.length > 1 ? h("span", {}, `${s.sources.length} reports merged`) : null,
+      ),
+      thumb(s.image, true),
+      s.summary ? h("p", { class: "summary", lang: s.lang || null }, s.summary) : null,
+      primary
+        ? h("p", { class: "read-on" }, ext(primary, `Read the full story at ${primary.name}`, h("span", { "aria-hidden": "true" }, " ↗")))
+        : null,
+      others.length
+        ? h(
+            "section",
+            { class: "also", "aria-labelledby": "h-also" },
+            h("h2", { id: "h-also" }, "Also reported by"),
+            h("ul", {}, others.map((src) => h("li", {}, ext(src, src.name, h("span", { "aria-hidden": "true" }, " ↗"))))),
+          )
+        : null,
+      h("p", { class: "ai-note" }, "This summary was written by AI from the linked reports and can contain mistakes."),
     ),
   );
 }
@@ -133,6 +205,8 @@ function topicChips(stories) {
 }
 
 function render() {
+  if (state.story) return renderStory(state.story);
+  document.getElementById("page-title").hidden = false;
   const content = document.getElementById("content");
   content.replaceChildren();
   document.querySelectorAll("#section-nav a").forEach((a) => {
@@ -166,7 +240,7 @@ function render() {
       { class: "top", "aria-labelledby": "h-top" },
       h("h2", { id: "h-top", class: "sr-only" }, "Top stories"),
       storyEl(lead, { lead: true, showRegion }),
-      top.length ? h("ul", { class: "side", role: "list" }, top.map((s) => h("li", {}, storyEl(s, { showRegion, summary: false, allSources: false })))) : null,
+      top.length ? h("ul", { class: "side", role: "list" }, top.map((s) => h("li", {}, storyEl(s, { showRegion })))) : null,
     ),
   );
   const shown = new Set([lead, ...top].map((s) => s.id));
@@ -225,12 +299,6 @@ function renderBreaking(leadId) {
           "a",
           {
             href: `#story-${s.id}`,
-            // The story may be filtered out of the current view: go back to the full front page first.
-            onclick: () => {
-              if (document.getElementById(`story-${s.id}`)) return;
-              state = { region: "", topic: "" };
-              render();
-            },
           },
           s.headline,
         ),
@@ -241,6 +309,8 @@ function renderBreaking(leadId) {
 
 function readHash() {
   const id = location.hash.slice(1);
+  state.story = id.startsWith("story-") ? id.slice(6) : null;
+  if (state.story) return;
   state.region = data?.site.regions.some((r) => r.id === id) ? id : "";
   state.topic = "";
 }
@@ -262,11 +332,32 @@ async function load() {
   }
 }
 
+const isStoryHash = (hash) => hash.startsWith("#story-");
+
 window.addEventListener("hashchange", () => {
   if (!data) return;
-  if (location.hash.startsWith("#story-")) return;
+  const from = currentHash || "#";
+  const to = location.hash || "#";
+  currentHash = to;
+  const leavingList = !isStoryHash(from) && isStoryHash(to);
+  const returningToList = isStoryHash(from) && !isStoryHash(to);
+  if (leavingList) {
+    listScroll.set(from, window.scrollY);
+    state.backTo = from;
+  }
+  const keepFilter = returningToList && listScroll.has(to);
+  const topic = state.topic;
   readHash();
+  if (keepFilter) state.topic = topic;
   render();
+
+  if (returningToList && listScroll.has(to)) {
+    // Back from a story: same scroll position, and focus on the story the reader opened.
+    window.scrollTo({ top: listScroll.get(to) });
+    const link = document.querySelector(`[data-story="${from.slice(7)}"] h3 a`);
+    (link ?? document.getElementById("main")).focus({ preventScroll: true });
+    return;
+  }
   window.scrollTo({ top: 0 });
   // Move keyboard and screen reader focus to the new view, as a page load would.
   document.getElementById("main").focus({ preventScroll: true });
