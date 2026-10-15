@@ -55,3 +55,13 @@ test("picks the widest image when a feed lists several", () => {
     <media:content width="140" url="https://img.x/small.jpg"/><media:content width="460" url="https://img.x/big.jpg"/></item></channel></rss>`;
   assert.equal(parseFeed(xml)[0].image, "https://img.x/big.jpg");
 });
+
+test("unwraps Bing click-tracking links and reads News:Source", async () => {
+  const { unwrapBingLink } = await import("../src/sources/bing-news.ts");
+  assert.equal(
+    unwrapBingLink("http://www.bing.com/news/apiclick.aspx?ref=FexRss&url=https%3a%2f%2fwww.vrt.be%2fx%2f&c=1"),
+    "https://www.vrt.be/x/",
+  );
+  const xml = `<rss><channel><item><title>T</title><link>http://www.bing.com/news/apiclick.aspx?url=https%3a%2f%2fe.x%2f1</link><News:Source>VRT</News:Source></item></channel></rss>`;
+  assert.deepEqual(parseFeed(xml, 5, ["News:Source"])[0].categories, ["VRT"]);
+});

@@ -1,5 +1,6 @@
-// Google News search as a feed. Covers publishers without RSS of their own (Belga, Focus-WTV,
-// The Brussels Times) through `site:` queries, and local news through keyword searches.
+// Google News search as a feed. Note: Google answers requests from Cloudflare's network with
+// HTTP 503, so this only works where the Worker's egress isn't blocked (e.g. local dev).
+// Prefer bing-news on Cloudflare.
 
 import { parseFeed } from "../feed.ts";
 import { fetchFeedText, num, str, type SourceModule } from "./types.ts";
@@ -7,7 +8,7 @@ import { fetchFeedText, num, str, type SourceModule } from "./types.ts";
 export const googleNews: SourceModule = {
   id: "google-news",
   name: "Google News search",
-  description: "A Google News search, e.g. `Brugge -voetbal` or `site:belganewsagency.eu`.",
+  description: "A Google News search. Google blocks requests from Cloudflare (HTTP 503): prefer Bing News search.",
   params: [
     { key: "query", label: "Search query", type: "string", required: true, help: "Google News search syntax." },
     { key: "language", label: "Language", type: "select", options: ["nl", "fr", "en", "de"], default: "nl" },

@@ -37,18 +37,19 @@ Sources are instances of **source modules** (`src/sources/`):
 | --- | --- |
 | `rss` | Any RSS 2.0 or Atom feed |
 | `vrt-nws` | VRT NWS, with optional section filters (Binnenland, Europa, …) |
-| `google-news` | A Google News search. Covers outlets without RSS, such as Belga (`site:belganewsagency.eu`), Focus-WTV and The Brussels Times |
+| `bing-news` | A Bing News search, newest first. Covers outlets without RSS, such as Focus-WTV (`site:focus-wtv.be`) and The Brussels Times |
+| `google-news` | A Google News search. Google blocks requests from Cloudflare's network (HTTP 503), so this only works in local dev |
 
 Every source also takes `maxItems`, `maxAgeHours`, `includeKeywords` and `excludeKeywords`. Each source has a list of **regions** its stories may be filed under. HLN Brugge only feeds "Bruges"; BBC World only "World" and "Europe".
 
 The starter set (`migrations/0001_init.sql`):
 
-- **Bruges:** HLN Brugge, Google News "Brugge", Focus-WTV
-- **Belgium:** VRT NWS, Belga, The Brussels Times
+- **Bruges:** HLN Brugge, Bing News "Brugge", Focus-WTV
+- **Belgium:** VRT NWS, The Brussels Times
 - **Europe:** Euronews, Politico Europe
 - **World:** BBC World, The Guardian
 
-You can add, edit, test and disable sources in `/admin`.
+You can add, edit, test and disable sources in `/admin`. Test a new feed from the deployed admin, not only locally. Some publishers block Cloudflare's IP ranges: Google News does, and Mediahuis titles (Nieuwsblad, De Standaard) redirect to a login.
 
 **Adding a new kind of source:** write a module that implements `SourceModule` in `src/sources/types.ts`; `rss.ts` is the smallest example. Then add it to `MODULES` in `src/sources/index.ts`. The admin's "Add source" form builds its fields from the module's `params`.
 

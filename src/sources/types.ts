@@ -67,7 +67,13 @@ export async function fetchFeedText(
   if (ctx.etag) headers["If-None-Match"] = ctx.etag;
   if (ctx.lastModified) headers["If-Modified-Since"] = ctx.lastModified;
 
-  const res = await fetch(url, { headers, redirect: "follow", signal: AbortSignal.timeout(15_000) });
+  let res = await fetch(url, { headers, redirect: "follow", signal: AbortSignal.timeout(15_000) });
+  // Some publishers' bot protection turns a request away now and then; one retry usually passes.
+  if (res.status === 403 || res.status === 429 || res.status >= 500) {
+    await res.body?.cancel();
+    await new Promise((r) => setTimeout(r, 2000));
+    res = await fetch(url, { headers, redirect: "follow", signal: AbortSignal.timeout(15_000) });
+  }
   if (res.status === 304) {
     await res.body?.cancel();
     return { body: null, etag: ctx.etag, lastModified: ctx.lastModified };

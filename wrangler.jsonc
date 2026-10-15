@@ -44,7 +44,7 @@
     // Cloudflare Access application covering /admin and /api/admin/* on this hostname.
     // ACCESS_AUD is its "Application Audience (AUD) Tag". While either is empty, admin is off.
     "ACCESS_TEAM_DOMAIN": "https://atlesque.cloudflareaccess.com",
-    "ACCESS_AUD": "",
+    "ACCESS_AUD": "58b935efe8a84445f2960af96a4a9df981a3f0f633939db6284f4779f00a092a",
     // Optional comma-separated allow-list on top of the Access policy. Empty = whoever Access lets in.
     "ADMIN_EMAILS": "alexander@atlesque.media"
   }
