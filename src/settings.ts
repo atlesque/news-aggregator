@@ -54,7 +54,7 @@ export const DEFAULT_SETTINGS: Settings = {
   model: "@cf/google/gemma-4-26b-a4b-it",
   embeddingModel: "@cf/baai/bge-m3",
   similarity: 0.75,
-  mergeSimilarity: 0.8,
+  mergeSimilarity: 0.78,
   windowHours: 36,
   maxEnrichPerRun: 40,
   excludedTopics: [],

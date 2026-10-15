@@ -11,7 +11,7 @@ import { buildSnapshot, type StoryInput } from "./rank.ts";
 import { loadSettings, REGIONS, type Region, type Settings } from "./settings.ts";
 import { getModule } from "./sources/index.ts";
 import { list, num } from "./sources/types.ts";
-import { canonicalUrl, matchesAny, sha256Hex, truncate } from "./text.ts";
+import { canonicalUrl, detectLang, matchesAny, sha256Hex, truncate } from "./text.ts";
 
 const HOUR = 3_600_000;
 const CLUSTER_BATCH = 16;
@@ -341,7 +341,8 @@ export async function loadStoriesForSnapshot(db: D1Database, settings: Settings,
     image: s.image,
     sources: byStory.get(s.id) ?? [],
     vec: fromBlob(s.headline_vec),
-    lang: s.lang,
+    // The model's own language label is unreliable; trust the text when it is clear.
+    lang: detectLang(`${s.headline} ${s.summary ?? ""}`) ?? s.lang,
   }));
 }
 

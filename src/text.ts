@@ -84,3 +84,20 @@ export function matchesAny(text: string, keywords: string[]): boolean {
   const hay = text.toLowerCase();
   return keywords.some((k) => k.trim() && hay.includes(k.trim().toLowerCase()));
 }
+
+const LANG_WORDS: Record<string, Set<string>> = {
+  nl: new Set("de het een van en in op is voor met na bij naar niet zijn wordt worden door dat die er ook nog over uit tegen".split(" ")),
+  en: new Set("the a an of and to in on is for with after at by from are be was were has have that this over into against".split(" ")),
+  fr: new Set("le la les des et du est pour avec dans sur une un au aux par pas qui que se".split(" ")),
+  de: new Set("der die das und ist mit von für auf nicht ein eine im den dem zu bei nach".split(" ")),
+};
+
+/** Guesses the language of a headline + summary from common function words. Null when unsure. */
+export function detectLang(text: string): string | null {
+  const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
+  const scores = Object.entries(LANG_WORDS)
+    .map(([lang, set]) => [lang, words.filter((w) => set.has(w)).length] as const)
+    .sort((a, b) => b[1] - a[1]);
+  const [best, second] = scores;
+  return best[1] >= 2 && best[1] >= second[1] * 2 ? best[0] : null;
+}
