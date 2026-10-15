@@ -274,9 +274,9 @@ export async function enrichBatch(env: Env, settings: Settings, limit: number, n
   });
 
   const outputs = await enrichStories(env.AI, settings, inputs, now);
-  // Rewritten stories are all in one language and style, which makes duplicates that slipped
-  // past article clustering easy to spot at publish time.
-  const vecs = outputs.length ? await embed(env, settings, outputs.map((o) => `${o.headline}. ${o.summary}`)) : [];
+  // The model's English one-line gist puts every story in the same language and style, which
+  // makes duplicates that slipped past article clustering easy to spot at publish time.
+  const vecs = outputs.length ? await embed(env, settings, outputs.map((o) => o.gist || `${o.headline}. ${o.summary}`)) : [];
   const stmts = outputs.map((o, i) =>
     db
       .prepare(

@@ -29,6 +29,8 @@ export interface EnrichOutput {
   newsworthy: boolean;
   /** ISO 639-1 code of the language the headline and summary are written in. */
   lang: string;
+  /** One English sentence stating the event: only used to spot duplicates across languages. */
+  gist: string;
 }
 
 const LANGUAGE_NAMES: Record<string, string> = { en: "English", nl: "Dutch", fr: "French", de: "German" };
@@ -38,7 +40,7 @@ export function systemPrompt(settings: Settings): string {
   // "source" keeps every story in the language its reporters wrote it in.
   const lang =
     settings.language === "source"
-      ? "the same language as the story's first listed article (do not translate)"
+      ? "the language of the story's first listed article (do not translate it; never mix languages)"
       : (LANGUAGE_NAMES[settings.language] ?? settings.language);
   return `You are the editor of a calm, factual news digest for readers living in ${L.local}, ${L.national}.
 You receive numbered stories. Each story is one or more source articles about the same event, possibly in different languages.
@@ -49,6 +51,7 @@ For every story, return:
 - topic: one of ${TOPICS.join(", ")}.
 - priority: "high" for major events with wide impact (deaths, disasters, major government decisions, strikes or disruptions that affect daily life, severe weather); "medium" for regular news; "low" for human interest, minor local items, celebrity news, curiosities.
 - breaking: true only for an urgent event unfolding right now (attack, disaster, major accident, sudden resignation of a head of government). Usually false.
+- gist_en: one short English sentence (at most 20 words) stating the event. Always English, whatever language the headline is in.
 - lang: the ISO 639-1 code of the language you wrote the headline and summary in, e.g. "nl" or "en".
 - newsworthy: false for advertising, promotions, quizzes, horoscopes, recipes, opinion columns, live-blog shells without news, and "what's on" listings. Otherwise true.
 Return one entry per story, with the same id.`;
@@ -57,7 +60,9 @@ Return one entry per story, with the same id.`;
 export function userPrompt(stories: EnrichInput[], now: number): string {
   return stories
     .map((s) => {
-      const lines = s.articles.slice(0, 4).map((a) => {
+      // Oldest first: the first report is the one the page credits first, and sets the language.
+      const articles = [...s.articles].sort((a, b) => a.publishedAt - b.publishedAt).slice(0, 4);
+      const lines = articles.map((a) => {
         const age = Math.max(0, Math.round((now - a.publishedAt) / 3_600_000));
         const parts = [`- [${a.source}, ${age}h ago] ${a.title}`];
         if (a.summary) parts.push(truncate(a.summary, 320));
@@ -85,9 +90,10 @@ export const RESPONSE_SCHEMA = {
           priority: { type: "string", enum: ["high", "medium", "low"] },
           breaking: { type: "boolean" },
           newsworthy: { type: "boolean" },
+          gist_en: { type: "string" },
           lang: { type: "string" },
         },
-        required: ["id", "headline", "summary", "region", "topic", "priority", "breaking", "newsworthy", "lang"],
+        required: ["id", "headline", "summary", "region", "topic", "priority", "breaking", "newsworthy", "gist_en", "lang"],
       },
     },
   },
@@ -129,6 +135,7 @@ export function parseEnrichment(text: string, inputs: EnrichInput[]): EnrichOutp
       priority,
       breaking: o.breaking === true,
       newsworthy: o.newsworthy !== false,
+      gist: typeof o.gist_en === "string" ? truncate(o.gist_en.trim(), 300) : "",
       lang: typeof o.lang === "string" && /^[a-z]{2}$/i.test(o.lang.trim()) ? o.lang.trim().toLowerCase() : "",
     });
     byId.delete(input.id);

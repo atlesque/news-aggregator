@@ -60,7 +60,7 @@ CREATE TABLE stories (
   newsworthy INTEGER NOT NULL DEFAULT 1,
   image TEXT,
   ai_model TEXT,
-  -- Embedding of the rewritten headline and summary: a second, same-language duplicate check.
+  -- Embedding of the AI's one-line English gist: a second, language-independent duplicate check.
   headline_vec BLOB,
   -- Admin overrides.
   hidden INTEGER NOT NULL DEFAULT 0,

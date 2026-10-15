@@ -20,7 +20,7 @@ export interface StoryInput {
   lastPublishedAt: number;
   image: string | null;
   sources: { name: string; url: string }[];
-  /** Embedding of the rewritten headline + summary, for the publish-time duplicate check. */
+  /** Embedding of the AI's English gist of the story, for the publish-time duplicate check. */
   vec?: Float32Array | null;
   /** ISO 639-1 language of headline and summary, when known. */
   lang?: string | null;
