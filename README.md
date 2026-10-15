@@ -23,7 +23,7 @@ Each step runs in its own invocation with its own CPU budget and retries indepen
 
 | Request | Served by | Cost |
 | --- | --- | --- |
-| `/`, `/app.js`, `/app.css` | Workers Static Assets | Free and unlimited; the Worker doesn't run |
+| `/`, `/local`, `/story/12`, … and the app's JS/CSS | Workers Static Assets | Free and unlimited; the Worker doesn't run |
 | `/api/public/news.json` (front page data) | Worker → edge cache → isolate memory → one D1 row | One cheap Worker request |
 | `/api/v1/news*` (keyed API) | Worker → per-query edge cache | One cheap Worker request |
 
@@ -141,8 +141,11 @@ A Cloudflare Access application protects `/admin` and `/api/admin/*`. The Worker
 pnpm install
 cp .dev.vars.example .dev.vars   # skips Access locally
 pnpm db:migrate:local
-pnpm dev
+pnpm build                       # the front end, into .output/public
+pnpm dev                         # the Worker, API and built front end on :8787
 ```
+
+The front end is a [Nuxt 4](https://nuxt.com) app with [Nuxt UI](https://ui.nuxt.com) in `app/`. It renders in the browser from `/api/public/news.json` and `nuxt generate` turns it into static files, so the Worker never runs for a page view. Pages have real paths: `/` is the front page, `/local`, `/national`, `/europe` and `/world` are the sections, and `/story/<id>` is a story. Old `/#story-<id>` and `/#local` links redirect to them. To work on the front end with hot reload, run `pnpm dev:web` next to `pnpm dev`; it serves on :3000 and sends `/api` to the Worker. The admin (`public/admin/`) is still plain HTML and JS.
 
 Then trigger a refresh with `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=7+*+*+*+*"` or the button in `/admin`. The AI binding always calls Workers AI remotely, even in local dev.
 
@@ -155,7 +158,7 @@ pnpm typecheck
 
 1. Run `pnpm exec wrangler d1 create news-aggregator` and put the `database_id` in `wrangler.jsonc`.
 2. Set the `routes` pattern and `SITE_URL` to your hostname, and `ADMIN_EMAILS`.
-3. Run `pnpm run deploy`. It applies migrations, then deploys.
+3. Run `pnpm run deploy`. It builds the front end, applies migrations, then deploys.
 4. In Zero Trust → Access → Applications, add a self-hosted application for `your.host/admin` and `your.host/api/admin` with a policy for your email.
 5. Put the application's AUD tag in `ACCESS_AUD` and your team domain in `ACCESS_TEAM_DOMAIN`, then deploy again.
 6. Edit the starter sources and region labels in `/admin` to match where you live.
