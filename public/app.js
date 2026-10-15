@@ -201,7 +201,7 @@ function render() {
 
 function renderChrome() {
   document.getElementById("site-title").textContent = data.site.title;
-  document.querySelector(".brand").setAttribute("aria-label", `${data.site.title}, front page`);
+  document.querySelector(".brand").setAttribute("aria-label", `${data.site.title}, home`);
   document.getElementById("tagline").textContent = data.site.tagline;
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
   document.getElementById("edition").textContent = data.generatedAt
@@ -209,7 +209,7 @@ function renderChrome() {
     : today;
 
   const navItem = (id, label) => h("li", {}, h("a", { href: `#${id}`, "data-region": id }, icon(id), h("span", {}, label)));
-  document.getElementById("section-nav").replaceChildren(navItem("", "Front page"), ...data.site.regions.map((r) => navItem(r.id, r.label)));
+  document.getElementById("section-nav").replaceChildren(navItem("", "Home"), ...data.site.regions.map((r) => navItem(r.id, r.label)));
 }
 
 // Breaking headlines, minus the one already shown as the lead right below.
