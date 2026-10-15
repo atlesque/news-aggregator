@@ -221,7 +221,7 @@ p { text-wrap: pretty; }
   }
   .regions a span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .regions svg { display: block; }
-  .regions a[aria-current="page"] { background: var(--primary-soft); color: var(--primary); }
+  .regions a[aria-current="page"] { background: var(--ink); color: var(--bg); }
 }
 
 /* Intro */
