@@ -283,7 +283,6 @@ main:focus { outline: none; }
 .story.priority-low h3 { font-weight: 600; }
 .story p.summary { margin: 4px 0 0; font-size: 0.9375rem; line-height: 1.55; color: var(--ink-2); max-width: 65ch; }
 .meta {
-  position: relative; z-index: 1; /* Source links stay clickable above the card-wide headline link. */
   display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-top: 6px;
   font-size: 0.8125rem; line-height: 1.5; color: var(--muted);
 }
@@ -331,6 +330,32 @@ main:focus { outline: none; }
 
 .story:hover h3 a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
 .story h3 a:hover { text-decoration: underline; }
+
+/* Story page */
+.detail { max-width: 44rem; margin: 0 auto; }
+.back {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-bottom: 8px;
+  font-size: 0.9375rem; font-weight: 550; color: var(--ink-2);
+}
+.detail h1 { margin: 2px 0 0; font-size: clamp(1.625rem, 1.2rem + 1.8vw, 2.5rem); line-height: 1.15; letter-spacing: -0.025em; font-weight: 700; }
+.detail .meta { margin-top: 10px; }
+.detail .thumb { aspect-ratio: 16 / 9; margin-top: 20px; border-radius: var(--radius); box-shadow: var(--shadow); }
+.detail .summary { margin: 20px 0 0; max-width: 65ch; font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem); line-height: 1.7; color: var(--ink); }
+.read-on { margin: 24px 0 0; }
+.read-on a {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 48px; padding: 12px 22px;
+  border-radius: 999px; background: var(--ink); color: var(--bg); font-weight: 600;
+}
+.read-on a:hover { text-decoration: none; opacity: 0.88; }
+.also { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); }
+.also h2 { margin: 0 0 10px; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+.also ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.also a {
+  display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 0.9375rem;
+}
+.also a:hover { text-decoration: none; border-color: var(--muted); }
+.ai-note { margin: 24px 0 0; font-size: 0.8125rem; color: var(--muted); }
 
 /* Footer */
 .footer { margin-top: 8px; padding-top: 16px; padding-bottom: 24px; border-top: 1px solid var(--line); font-size: var(--step--1); color: var(--ink-2); }
