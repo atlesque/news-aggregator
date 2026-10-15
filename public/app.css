@@ -96,12 +96,13 @@ main { padding-top: 8px; padding-bottom: 24px; min-height: 50vh; }
 .section-head h2 { margin: 0; font: 700 22px/1.2 var(--serif); }
 .section-head a { font-size: 13px; color: var(--muted); }
 
-.front { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 28px; margin-top: 22px; }
-.front .rail { border-left: 1px solid var(--rule); padding-left: 24px; display: grid; gap: 16px; align-content: start; }
-.front .rail .story + .story { border-top: 1px solid var(--rule); padding-top: 16px; }
+.front { margin-top: 22px; }
+.lead { padding-bottom: 18px; margin-bottom: 4px; border-bottom: 1px solid var(--rule); }
 
-.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 28px; }
-.grid .story { border-top: 1px solid var(--rule); padding-top: 14px; }
+/* Stories flow down newspaper-style columns, so short and long stories pack without gaps. */
+.flow { columns: 3 260px; column-gap: 32px; column-rule: 1px solid var(--rule); }
+.flow .story { break-inside: avoid; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.flow .story:last-child { border-bottom: 0; }
 
 .story { min-width: 0; }
 .kicker {
@@ -121,21 +122,14 @@ main { padding-top: 8px; padding-bottom: 24px; min-height: 50vh; }
 .story .meta a { text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 2px; }
 .story .meta a:hover { color: var(--ink); }
 
-.lead h3 { font-size: clamp(26px, 3.4vw, 38px); line-height: 1.12; letter-spacing: -0.015em; }
-.lead p.summary { font-size: 17px; margin-top: 10px; }
-.lead figure { margin: 0 0 14px; aspect-ratio: 16 / 9; overflow: hidden; background: var(--chip); }
-.lead figure img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.story.lead h3 { font-size: clamp(28px, 4vw, 44px); line-height: 1.1; letter-spacing: -0.015em; max-width: 26ch; }
+.story.lead.priority-low h3 { font-weight: 700; color: var(--ink); }
+.story.lead p.summary { font-size: 18px; margin-top: 10px; max-width: 68ch; }
 
 .footer { border-top: 1px solid var(--rule); padding-top: 18px; padding-bottom: 40px; font-size: 13px; color: var(--ink-2); }
 .footer p { margin: 0 0 6px; max-width: 70ch; }
 
-@media (max-width: 900px) {
-  .front { grid-template-columns: 1fr; }
-  .front .rail { border-left: 0; padding-left: 0; border-top: 1px solid var(--rule); padding-top: 16px; }
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 600px) {
-  .grid { grid-template-columns: 1fr; }
   .masthead { padding-top: 20px; }
   .sections ul { justify-content: flex-start; gap: 0 16px; }
 }

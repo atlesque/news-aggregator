@@ -27,7 +27,7 @@ export interface Settings {
   regionLabels: Record<Region, string>;
   /** How many stories each region gets on the front page and in the API. */
   quotas: Record<Region, number>;
-  /** Language the AI writes headlines and summaries in (ISO 639-1). */
+  /** Language the AI writes headlines and summaries in: "source" keeps each story's original language, or an ISO 639-1 code to translate everything. */
   language: string;
   /** Workers AI text model for summaries and ranking. */
   model: string;
@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tagline: "Bruges, Belgium, Europe and the world. Hourly, without the clickbait.",
   regionLabels: { local: "Bruges", national: "Belgium", europe: "Europe", world: "World" },
   quotas: { local: 8, national: 10, europe: 6, world: 8 },
-  language: "en",
+  language: "source",
   model: "@cf/google/gemma-4-26b-a4b-it",
   embeddingModel: "@cf/baai/bge-m3",
   similarity: 0.75,

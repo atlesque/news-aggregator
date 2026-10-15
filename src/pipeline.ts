@@ -281,9 +281,9 @@ export async function enrichBatch(env: Env, settings: Settings, limit: number, n
     db
       .prepare(
         `UPDATE stories SET headline = ?, summary = ?, region = ?, topic = ?, priority = ?, breaking = ?, newsworthy = ?,
-           dirty = 0, enriched_at = ?, ai_model = ?, headline_vec = ? WHERE id = ?`,
+           dirty = 0, enriched_at = ?, ai_model = ?, headline_vec = ?, lang = ? WHERE id = ?`,
       )
-      .bind(o.headline, o.summary, o.region, o.topic, o.priority, o.breaking ? 1 : 0, o.newsworthy ? 1 : 0, now, settings.model, toBlob(vecs[i]), o.id),
+      .bind(o.headline, o.summary, o.region, o.topic, o.priority, o.breaking ? 1 : 0, o.newsworthy ? 1 : 0, now, settings.model, toBlob(vecs[i]), o.lang || null, o.id),
   );
   // Stories the model skipped stay dirty and are retried in a later run, not this one.
   const skipped = ids.filter((id) => !outputs.some((o) => o.id === id));
@@ -297,7 +297,7 @@ export async function loadStoriesForSnapshot(db: D1Database, settings: Settings,
   const since = now - Math.max(settings.windowHours, 48) * HOUR;
   const { results: stories } = await db
     .prepare(
-      `SELECT id, headline, summary, region, topic, priority, breaking, pinned, first_published_at, last_published_at, image, headline_vec
+      `SELECT id, headline, summary, region, topic, priority, breaking, pinned, first_published_at, last_published_at, image, headline_vec, lang
        FROM stories
        WHERE headline IS NOT NULL AND newsworthy = 1 AND hidden = 0 AND (last_published_at > ? OR pinned = 1)`,
     )
@@ -306,6 +306,7 @@ export async function loadStoriesForSnapshot(db: D1Database, settings: Settings,
       id: number; headline: string; summary: string; region: Region; topic: StoryInput["topic"]; priority: 1 | 2 | 3;
       breaking: number; pinned: number; first_published_at: number; last_published_at: number; image: string | null;
       headline_vec: ArrayBuffer | null;
+      lang: string | null;
     }>();
   if (!stories.length) return [];
 
@@ -340,6 +341,7 @@ export async function loadStoriesForSnapshot(db: D1Database, settings: Settings,
     image: s.image,
     sources: byStory.get(s.id) ?? [],
     vec: fromBlob(s.headline_vec),
+    lang: s.lang,
   }));
 }
 

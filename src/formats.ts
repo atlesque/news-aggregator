@@ -93,7 +93,7 @@ export function renderJson(snapshot: Snapshot, stories: PublicStory[]): string {
  * Short keys and no URLs, for microcontrollers with little RAM:
  * t = generated (unix s), n = next update (unix s), i = items with
  * h headline, s summary, r region, c topic, p priority (3 high … 1 low), b breaking (0/1),
- * a published (unix s), o outlet (first source).
+ * a published (unix s), o outlet (first source), l language (ISO 639-1, when known).
  */
 export function renderCompact(snapshot: Snapshot, stories: PublicStory[]): string {
   const unix = (iso: string) => Math.floor(Date.parse(iso) / 1000);
@@ -110,6 +110,7 @@ export function renderCompact(snapshot: Snapshot, stories: PublicStory[]): strin
         a: unix(s.updatedAt),
         o: s.sources[0]?.name ?? "",
       };
+      if (s.lang) item.l = s.lang;
       if (s.summary) item.s = s.summary;
       return item;
     }),

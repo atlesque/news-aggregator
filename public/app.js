@@ -5,7 +5,8 @@ const TOPIC_LABELS = {
   science: "Science", technology: "Technology", environment: "Environment", culture: "Culture", sports: "Sports",
   mobility: "Mobility", weather: "Weather", other: "Other",
 };
-const LEAD_COUNT = 5;
+// The lead story plus this many more make up the top block.
+const TOP_COUNT = 6;
 
 let data = null;
 let state = { region: "", topic: "" };
@@ -42,21 +43,6 @@ function storyEl(s, { lead = false, showRegion = true } = {}) {
   return h(
     "article",
     { class: `story priority-${s.priority}${lead ? " lead" : ""}`, id: `story-${s.id}` },
-    lead && s.image
-      ? h(
-          "figure",
-          {},
-          h("img", {
-            src: s.image,
-            alt: "",
-            referrerpolicy: "no-referrer",
-            decoding: "async",
-            // Drop broken images and thumbnails too small to fill the lead slot.
-            onerror: (e) => e.target.parentElement.remove(),
-            onload: (e) => e.target.naturalWidth < 400 && e.target.parentElement.remove(),
-          }),
-        )
-      : null,
     h(
       "div",
       { class: "kicker" },
@@ -65,8 +51,8 @@ function storyEl(s, { lead = false, showRegion = true } = {}) {
       h("span", {}, TOPIC_LABELS[s.topic] ?? s.topic),
       showRegion ? h("span", { class: "region" }, regionLabel(s.region)) : null,
     ),
-    h("h3", {}, primary ? h("a", { href: primary.url, target: "_blank", rel: "noopener" }, s.headline) : s.headline),
-    s.summary ? h("p", { class: "summary" }, s.summary) : null,
+    h("h3", { lang: s.lang || null }, primary ? h("a", { href: primary.url, target: "_blank", rel: "noopener" }, s.headline) : s.headline),
+    s.summary ? h("p", { class: "summary", lang: s.lang || null }, s.summary) : null,
     h(
       "div",
       { class: "meta" },
@@ -120,22 +106,22 @@ function render() {
     return;
   }
 
-  // Front block: the best stories overall (or in this section).
+  // Top block: the lead story across the full width, then the next best in flowing columns.
   const [lead, ...rest] = stories;
-  const rail = rest.slice(0, LEAD_COUNT - 1);
+  const top = rest.slice(0, TOP_COUNT);
   main.append(
     h(
       "section",
       { class: "front", "aria-label": "Top stories" },
       storyEl(lead, { lead: true, showRegion: !state.region }),
-      rail.length ? h("div", { class: "rail" }, rail.map((s) => storyEl(s, { showRegion: !state.region }))) : null,
+      top.length ? h("div", { class: "flow" }, top.map((s) => storyEl(s, { showRegion: !state.region }))) : null,
     ),
   );
-  const shown = new Set([lead, ...rail].map((s) => s.id));
+  const shown = new Set([lead, ...top].map((s) => s.id));
   const remaining = stories.filter((s) => !shown.has(s.id));
 
   if (state.region) {
-    if (remaining.length) main.append(h("section", { class: "section" }, h("div", { class: "grid" }, remaining.map((s) => storyEl(s, { showRegion: false })))));
+    if (remaining.length) main.append(h("section", { class: "section" }, h("div", { class: "flow" }, remaining.map((s) => storyEl(s, { showRegion: false })))));
     return;
   }
   for (const region of data.site.regions) {
@@ -146,7 +132,7 @@ function render() {
         "section",
         { class: "section", "aria-labelledby": `h-${region.id}` },
         h("div", { class: "section-head" }, h("h2", { id: `h-${region.id}` }, region.label), h("a", { href: `#${region.id}` }, `All ${region.label} news →`)),
-        h("div", { class: "grid" }, list.map((s) => storyEl(s, { showRegion: false }))),
+        h("div", { class: "flow" }, list.map((s) => storyEl(s, { showRegion: false }))),
       ),
     );
   }
@@ -170,7 +156,7 @@ function renderChrome() {
   const breaking = data.stories.filter((s) => s.breaking);
   const bar = document.getElementById("breaking");
   bar.hidden = !breaking.length;
-  document.getElementById("breaking-list").replaceChildren(...breaking.map((s) => h("li", {}, h("a", { href: `#story-${s.id}`, onclick: () => { state = { region: "", topic: "" }; } }, s.headline))));
+  document.getElementById("breaking-list").replaceChildren(...breaking.map((s) => h("li", { lang: s.lang || null }, h("a", { href: `#story-${s.id}`, onclick: () => { state = { region: "", topic: "" }; } }, s.headline))));
 }
 
 function readHash() {

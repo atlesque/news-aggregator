@@ -11,7 +11,7 @@ Every hour at minute 7, a cron trigger starts a [Workflow](https://developers.cl
 1. **Fetch** each enabled source (one step per source, using conditional GETs). New articles are stored in D1, keyed by a hash of their canonical URL, so refetches are free.
 2. **Cluster** new articles into stories. Each article is embedded with the multilingual `@cf/baai/bge-m3` model. It joins the most similar recent story or starts a new one, so a Dutch HLN report and an English Brussels Times report of the same event become one story.
 3. **Enrich** new and updated stories in batches of 8 with one Workers AI call per batch (default `@cf/google/gemma-4-26b-a4b-it`). Each story gets:
-   - a neutral headline with no clickbait and a 1–2 sentence summary, in a language you choose;
+   - a neutral headline with no clickbait and a 1–2 sentence summary, in the language of the original reports (Dutch stays Dutch, English stays English). You can set a single language in the admin to translate everything instead;
    - a region, limited to the regions its sources are allowed to cover;
    - a topic, a priority (high/medium/low) and a breaking flag;
    - a "newsworthy" flag, so ads, quizzes and listings are dropped.
@@ -104,6 +104,7 @@ The keys are:
 - `b`: breaking (0/1)
 - `a`: last update (Unix seconds)
 - `o`: outlet (first source)
+- `l`: language of headline and summary (ISO 639-1), when known
 
 ESP32 sketch:
 

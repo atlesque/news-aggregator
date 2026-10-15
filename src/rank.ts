@@ -22,12 +22,15 @@ export interface StoryInput {
   sources: { name: string; url: string }[];
   /** Embedding of the rewritten headline + summary, for the publish-time duplicate check. */
   vec?: Float32Array | null;
+  /** ISO 639-1 language of headline and summary, when known. */
+  lang?: string | null;
 }
 
 export interface PublicStory {
   id: number;
   headline: string;
   summary: string;
+  lang: string | null;
   region: Region;
   topic: Topic;
   priority: Priority;
@@ -102,6 +105,7 @@ export function buildSnapshot(stories: StoryInput[], settings: Settings, now: nu
         id: s.id,
         headline: s.headline,
         summary: s.summary,
+        lang: s.lang ?? null,
         region: s.region,
         topic: s.topic,
         priority: PRIORITY_NAMES[s.priority] ?? "low",

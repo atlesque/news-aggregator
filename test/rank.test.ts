@@ -46,17 +46,31 @@ test("API filters and compact output", () => {
   const picked = selectStories(snap, q);
   assert.equal(picked.length, 1);
   const out = JSON.parse(renderCompact(snap, picked));
+  assert.equal(out.i[0].l, undefined);
   assert.equal(out.i[0].h, "Oekraine");
   assert.equal(out.i[0].p, 3);
 });
 
 test("AI output is validated against the story's allowed regions", () => {
   const inputs = [{ id: 7, allowedRegions: ["local" as const], articles: [] }];
-  const text = '```json\n{"stories":[{"id":7,"headline":"Fire in Bruges!","summary":"s","region":"world","topic":"nonsense","priority":"high","breaking":false,"newsworthy":true},{"id":99,"headline":"x"}]}\n```';
+  const text = '```json\n{"stories":[{"id":7,"headline":"Fire in Bruges!","summary":"s","region":"world","topic":"nonsense","priority":"high","breaking":false,"newsworthy":true,"lang":"NL"},{"id":99,"headline":"x"}]}\n```';
   const [o, ...rest] = parseEnrichment(text, inputs);
   assert.equal(rest.length, 0);
   assert.equal(o.region, "local");
   assert.equal(o.topic, "other");
   assert.equal(o.priority, 3);
   assert.equal(o.headline, "Fire in Bruges");
+  assert.equal(o.lang, "nl");
+});
+
+test("source-language mode tells the model not to translate", async () => {
+  const { systemPrompt } = await import("../src/enrich.ts");
+  assert.match(systemPrompt(DEFAULT_SETTINGS), /same language as the story's first listed article/);
+  assert.match(systemPrompt({ ...DEFAULT_SETTINGS, language: "en" }), /headline: in English/);
+});
+
+test("story language is carried into the snapshot and compact output", () => {
+  const snap = buildSnapshot([story(1, { lang: "nl" })], DEFAULT_SETTINGS, now);
+  assert.equal(snap.stories[0].lang, "nl");
+  assert.equal(JSON.parse(renderCompact(snap, snap.stories)).i[0].l, "nl");
 });

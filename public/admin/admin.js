@@ -429,7 +429,7 @@ function settingsPanel() {
   form.append(
     field("siteTitle", "Site title", h("input", { name: "siteTitle", value: s.siteTitle })),
     field("tagline", "Tagline", h("input", { name: "tagline", value: s.tagline })),
-    field("language", "Summary language", h("input", { name: "language", value: s.language }), "ISO code: en, nl, fr, de…"),
+    field("language", "Summary language", h("input", { name: "language", value: s.language }), "\"source\" keeps each story in its original language. An ISO code (en, nl, fr…) translates everything."),
     field("model", "Text model", h("input", { name: "model", value: s.model }), `Workers AI model id. Default ${ov.defaults.model}.`),
     field("embeddingModel", "Embedding model", h("input", { name: "embeddingModel", value: s.embeddingModel }), "Must be multilingual to merge Dutch and English reports."),
     field("similarity", "Duplicate threshold", h("input", { name: "similarity", type: "number", step: "0.01", min: "0.5", max: "0.99", value: s.similarity }), "Higher = stricter merging. 0.75 is a good start."),
