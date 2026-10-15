@@ -160,6 +160,15 @@ pnpm typecheck
 5. Put the application's AUD tag in `ACCESS_AUD` and your team domain in `ACCESS_TEAM_DOMAIN`, then deploy again.
 6. Edit the starter sources and region labels in `/admin` to match where you live.
 
+### Automatic deploys
+
+`.github/workflows/deploy.yml` typechecks, tests and runs `pnpm run deploy` on every push to `main`. Pull requests only get the checks. It needs two repository secrets (Settings → Secrets and variables → Actions):
+
+- `CLOUDFLARE_ACCOUNT_ID`: from the Cloudflare dashboard's account home.
+- `CLOUDFLARE_API_TOKEN`: a token from the "Edit Cloudflare Workers" template, with **Account → D1 → Edit** added so migrations can run.
+
+You can also run a deploy by hand from the Actions tab ("Deploy" → "Run workflow").
+
 ## License
 
 MIT
