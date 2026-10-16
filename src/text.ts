@@ -60,10 +60,11 @@ export async function sha256Hex(s: string): Promise<string> {
 /** Removes tracking parameters and fragments so the same article always hashes the same. */
 export function canonicalUrl(raw: string): string {
   try {
-    const u = new URL(raw.trim());
+    // Some feeds HTML-escape their links twice, leaving "?amp;utm_source=…" behind.
+    const u = new URL(raw.trim().replace(/&amp;/gi, "&"));
     u.hash = "";
     for (const k of [...u.searchParams.keys()]) {
-      if (/^(utm_|at_|fbclid|gclid|ref$|ref_|xtor|ito$|cmpid)/i.test(k)) u.searchParams.delete(k);
+      if (/^(amp;)?(utm_|at_|fbclid|gclid|ref$|ref_|xtor|ito$|cmpid|slug_rd$|amp$)/i.test(k)) u.searchParams.delete(k);
     }
     return u.toString();
   } catch {
@@ -78,6 +79,24 @@ export function titleKey(title: string): string {
     .split(/\s+/)
     .filter((w) => w.length >= 3)
     .join(" ");
+}
+
+/**
+ * The second "already ingested?" key, next to the URL: the outlet's host plus the headline's
+ * words. Catches one article reached under several URLs (Bing hands out the same Brussels Times
+ * piece under /belgium/…, /eu-affairs/…, truncated and tracking-tagged links). Null when the
+ * headline is too short to be a safe match on its own.
+ */
+export function dedupKey(url: string, title: string): string | null {
+  const words = titleKey(title);
+  if (words.length < 12) return null;
+  let host: string;
+  try {
+    host = new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+  return `${host}|${words}`;
 }
 
 export function matchesAny(text: string, keywords: string[]): boolean {

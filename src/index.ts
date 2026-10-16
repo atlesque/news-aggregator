@@ -2,6 +2,7 @@ import { requireAdmin } from "./access.ts";
 import { handleAdmin } from "./admin.ts";
 import { keyedNews, publicNews } from "./api.ts";
 import { errorResponse, HttpError } from "./http.ts";
+import { serveImage } from "./images.ts";
 import { isRefreshTime } from "./schedule.ts";
 import type { Format } from "./formats.ts";
 
@@ -22,6 +23,9 @@ export default {
     try {
       if (path === "/api/public/news.json" && (request.method === "GET" || request.method === "HEAD")) {
         return await publicNews(request, env, ctx);
+      }
+      if (path.startsWith("/img/") && (request.method === "GET" || request.method === "HEAD")) {
+        return await serveImage(request, env.IMAGES, path.slice(5));
       }
       if (path in KEYED_ROUTES) {
         if (request.method !== "GET" && request.method !== "HEAD") throw new HttpError(405, "Method not allowed");

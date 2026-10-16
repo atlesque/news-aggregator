@@ -96,7 +96,7 @@ export async function handleAdmin(request: Request, env: Env, path: string, emai
     return json({ id: instance.id });
   }
   if (path === "/publish" && method === "POST") {
-    const count = await publish(db, Date.now());
+    const count = await publish(db, Date.now(), env.SITE_URL);
     forgetSnapshot();
     return json({ count });
   }
