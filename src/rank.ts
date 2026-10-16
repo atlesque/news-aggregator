@@ -51,11 +51,17 @@ export interface Snapshot {
 }
 
 const HOUR = 3_600_000;
-/** A "breaking" flag only shows while the story is still developing. */
+/** "Breaking" only shows while the first report is this recent. */
 export const BREAKING_HOURS = 6;
+/** The page never marks more than this many stories important, or more than this many breaking. */
+export const MAX_IMPORTANT = 4;
+export const MAX_BREAKING = 2;
+/** A story needs this many outlets reporting it before it can be marked important or breaking. */
+export const MIN_FLAG_SOURCES = 2;
 
-export function isBreaking(s: Pick<StoryInput, "breaking" | "lastPublishedAt">, now: number): boolean {
-  return s.breaking && now - s.lastPublishedAt < BREAKING_HOURS * HOUR;
+/** The editor called it breaking, it was first reported within the last few hours, and more than one outlet has it. */
+export function isBreaking(s: Pick<StoryInput, "breaking" | "firstPublishedAt" | "sources">, now: number): boolean {
+  return s.breaking && now - s.firstPublishedAt < BREAKING_HOURS * HOUR && s.sources.length >= MIN_FLAG_SOURCES;
 }
 
 export function scoreStory(s: StoryInput, now: number): number {
@@ -84,7 +90,7 @@ export function buildSnapshot(stories: StoryInput[], settings: Settings, now: nu
   // Walk stories best-first. A story that reads like one already accepted is folded into it
   // (its sources are added), so the same event never shows twice.
   const used: Record<string, number> = {};
-  const picked: PublicStory[] = [];
+  const picked: { s: StoryInput; out: PublicStory }[] = [];
   const accepted: { vec: Float32Array; region: Region; out: PublicStory | null }[] = [];
   for (const { s } of scored) {
     const dupe = s.vec
@@ -109,15 +115,32 @@ export function buildSnapshot(stories: StoryInput[], settings: Settings, now: nu
         region: s.region,
         topic: s.topic,
         priority: PRIORITY_NAMES[s.priority] ?? "low",
-        breaking: isBreaking(s, now),
+        breaking: false,
         publishedAt: new Date(s.firstPublishedAt).toISOString(),
         updatedAt: new Date(s.lastPublishedAt).toISOString(),
         image: s.image,
         sources: [...s.sources],
       };
-      picked.push(out);
+      picked.push({ s, out });
     }
     if (s.vec) accepted.push({ vec: s.vec, region: s.region, out });
+  }
+
+  // Flags go on last, once duplicates have added their sources. Best stories first, and only a
+  // handful: "high" in the snapshot means important on the page, so the rest of the editor's
+  // "high" stories are published as "medium".
+  let important = 0;
+  let breaking = 0;
+  for (const { s, out } of picked) {
+    const corroborated = out.sources.length >= MIN_FLAG_SOURCES;
+    const isImportant = important < MAX_IMPORTANT && corroborated && (s.priority === 3 || isBreaking({ ...s, sources: out.sources }, now));
+    if (isImportant) important++;
+    else if (out.priority === "high") out.priority = "medium";
+    if (isImportant && breaking < MAX_BREAKING && isBreaking({ ...s, sources: out.sources }, now)) {
+      out.priority = "high";
+      out.breaking = true;
+      breaking++;
+    }
   }
 
   return {
@@ -129,6 +152,6 @@ export function buildSnapshot(stories: StoryInput[], settings: Settings, now: nu
       tagline: settings.tagline,
       regions: REGIONS.map((id) => ({ id, label: settings.regionLabels[id] })),
     },
-    stories: picked,
+    stories: picked.map((p) => p.out),
   };
 }

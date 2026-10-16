@@ -1,6 +1,8 @@
 <script setup lang="ts">
-// The front page ("/") and each section ("/local", "/national", …): the lead story with the next
-// best beside it, then the rest, grouped by section on the front page.
+// The front page ("/") and each section ("/local", "/national", …). Important stories come first,
+// grouped in a box: the first one leads with its picture, the others sit beside it. Without any,
+// the best story leads with the next best beside it. Then the rest, grouped by section on the
+// front page.
 definePageMeta({
   validate: (route) => {
     const region = route.params.region;
@@ -21,9 +23,14 @@ const regionName = computed(() => (region.value ? regionLabel(region.value) : ""
 const regionStories = computed(() => (data.value?.stories ?? []).filter((s) => !region.value || s.region === region.value));
 const stories = computed(() => regionStories.value.filter((s) => !topic.value || s.topic === topic.value));
 
-const lead = computed(() => stories.value[0]);
-const top = computed(() => stories.value.slice(1, 1 + TOP_COUNT));
-const remaining = computed(() => stories.value.slice(1 + TOP_COUNT));
+// The snapshot marks only a handful of stories "high": those are the important ones.
+const important = computed(() => stories.value.filter((s) => s.priority === "high"));
+const others = computed(() => stories.value.filter((s) => s.priority !== "high"));
+const grouped = computed(() => important.value.length > 0);
+
+const lead = computed(() => (grouped.value ? important.value[0] : others.value[0]));
+const top = computed(() => (grouped.value ? important.value.slice(1) : others.value.slice(1, 1 + TOP_COUNT)));
+const remaining = computed(() => (grouped.value ? others.value : others.value.slice(1 + TOP_COUNT)));
 const sections = computed(() =>
   regions.value.map((r) => ({ ...r, stories: remaining.value.filter((s) => s.region === r.id) })).filter((r) => r.stories.length),
 );
@@ -52,9 +59,11 @@ useHead({ title: computed(() => (regionName.value ? `${regionName.value} · ${ti
         {{ data.stories.length ? "No stories match this filter right now." : "No news yet. The first update is on its way." }}
       </p>
       <template v-else>
-        <!-- Top block: the lead story with its picture, and the next best stories beside it. -->
-        <section class="top" aria-labelledby="h-top">
-          <h2 id="h-top" class="sr-only">Top stories</h2>
+        <!-- Top block: the lead story with its picture, and the next best stories beside it. When
+             there are important stories, the block holds just those, in a box of its own. -->
+        <section :class="['top', { important: grouped }]" aria-labelledby="h-top">
+          <h2 v-if="grouped" id="h-top" class="important-label">Important</h2>
+          <h2 v-else id="h-top" class="sr-only">Top stories</h2>
           <StoryItem :story="lead" lead :show-region="!region" />
           <ul v-if="top.length" class="side" role="list">
             <li v-for="s in top" :key="s.id"><StoryItem :story="s" :show-region="!region" /></li>
