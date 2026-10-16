@@ -51,6 +51,10 @@ export default defineNuxtConfig({
 
   // `pnpm dev:web` runs the Nuxt dev server; /api goes to `pnpm dev` (wrangler) on 8787.
   nitro: {
+    // Always plain static files. On Cloudflare's builder Nitro would otherwise detect Workers
+    // Builds, pick its cloudflare-module preset and write .wrangler/deploy/config.json, which
+    // points `wrangler deploy` at a Nitro server that doesn't exist instead of src/index.ts.
+    preset: "static",
     devProxy: { "/api": { target: "http://localhost:8787/api", changeOrigin: true } },
     // Only the app shell is generated; don't follow links (such as the news.json preload).
     prerender: { crawlLinks: false, routes: ["/"] },
