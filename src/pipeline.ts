@@ -1,4 +1,4 @@
-// The hourly refresh, as a Cloudflare Workflow. Each piece of work is its own step:
+// The news refresh (6:07, 12:07, 16:07 and 20:07 Brussels time), as a Cloudflare Workflow. Each piece of work is its own step:
 //   fetch (one step per source) → cluster (batches of new articles) → enrich (batches of stories) → publish.
 // Steps run in separate invocations with their own CPU budget and retry independently, so a
 // slow feed or a failed AI call never sinks the whole run, and the free plan's 10 ms CPU

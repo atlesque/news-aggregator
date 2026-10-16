@@ -52,7 +52,7 @@ export const COMMON_PARAMS: ParamSpec[] = [
   { key: "excludeKeywords", label: "Drop items mentioning", type: "list", help: "Comma-separated." },
 ];
 
-export const USER_AGENT = "AtlesqueNews/1.0 (+https://news.atlesque.dev; hourly news aggregator)";
+export const USER_AGENT = "AtlesqueNews/1.0 (+https://news.atlesque.dev; news aggregator)";
 const MAX_FEED_BYTES = 2_000_000;
 
 /** Conditional GET of a feed. Returns null body on 304. */

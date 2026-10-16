@@ -96,7 +96,7 @@ async function authenticate(request: Request, env: Env, ctx: ExecutionContext, u
   if (hit.id === null) throw new HttpError(401, "Unknown or revoked API key");
 
   const { success } = await env.API_LIMITER.limit({ key: `key:${hit.id}` });
-  if (!success) throw new HttpError(429, "Too many requests. The news only changes once an hour.");
+  if (!success) throw new HttpError(429, "Too many requests. The news only changes four times a day.");
   return hit.id;
 }
 

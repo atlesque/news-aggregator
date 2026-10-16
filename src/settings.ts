@@ -39,7 +39,7 @@ export interface Settings {
   mergeSimilarity: number;
   /** Stories older than this (by latest article) drop off the page. */
   windowHours: number;
-  /** Ceiling on AI-rewritten stories per hourly run, to bound Workers AI usage. */
+  /** Ceiling on AI-rewritten stories per refresh, to bound Workers AI usage. */
   maxEnrichPerRun: number;
   /** Topics the AI should leave out entirely. */
   excludedTopics: Topic[];
@@ -47,7 +47,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   siteTitle: "Atlesque News",
-  tagline: "Bruges, Belgium, Europe and the world. Hourly, without the clickbait.",
+  tagline: "Bruges, Belgium, Europe and the world. Four times a day, without the clickbait.",
   regionLabels: { local: "Bruges", national: "Belgium", europe: "Europe", world: "World" },
   quotas: { local: 8, national: 10, europe: 6, world: 8 },
   language: "source",
@@ -56,7 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
   similarity: 0.75,
   mergeSimilarity: 0.78,
   windowHours: 36,
-  maxEnrichPerRun: 40,
+  maxEnrichPerRun: 120,
   excludedTopics: [],
 };
 

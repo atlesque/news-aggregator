@@ -1,12 +1,12 @@
 # News Aggregator
 
-A calm, hourly news front page for Bruges, Belgium, Europe and the world, with a keyed JSON/RSS API for small devices like an ESP32 e-ink display. It runs entirely on Cloudflare's free tier.
+A calm news front page, refreshed four times a day, for Bruges, Belgium, Europe and the world, with a keyed JSON/RSS API for small devices like an ESP32 e-ink display. It runs entirely on Cloudflare's free tier.
 
 **Live:** https://news.atlesque.dev
 
 ## How it works
 
-Every hour at minute 7, a cron trigger starts a [Workflow](https://developers.cloudflare.com/workflows/) that runs these steps:
+At 6:07, 12:07, 16:07 and 20:07 Brussels time, a cron trigger starts a [Workflow](https://developers.cloudflare.com/workflows/) that runs these steps. Cron triggers run in UTC, so each time fires at both its summer and winter UTC hour and the Worker skips the one that isn't the right Brussels time:
 
 1. **Fetch** each enabled source (one step per source, using conditional GETs). New articles are stored in D1, keyed by a hash of their canonical URL, so refetches are free.
 2. **Cluster** new articles into stories. Each article is embedded with the multilingual `@cf/baai/bge-m3` model. It joins the most similar recent story or starts a new one, so a Dutch HLN report and an English Brussels Times report of the same event become one story.
@@ -27,7 +27,7 @@ Each step runs in its own invocation with its own CPU budget and retries indepen
 | `/api/public/news.json` (front page data) | Worker → edge cache → isolate memory → one D1 row | One cheap Worker request |
 | `/api/v1/news*` (keyed API) | Worker → per-query edge cache | One cheap Worker request |
 
-JSON responses carry `Cache-Control: max-age=300` and an `ETag`, so browsers and devices revalidate with a 304 instead of downloading again. The edge cache serves repeat requests from each Cloudflare location without touching D1. The AI only runs in the hourly Workflow, never on a request. Traffic doesn't change AI usage.
+JSON responses carry `Cache-Control: max-age=300` and an `ETag`, so browsers and devices revalidate with a 304 instead of downloading again. The edge cache serves repeat requests from each Cloudflare location without touching D1. The AI only runs in the refresh Workflow, never on a request. Traffic doesn't change AI usage.
 
 ## Sources
 
@@ -84,7 +84,7 @@ GET /api/v1/news.txt            plain text
 | `ascii` | `1` = fold accents and typographic quotes to plain ASCII, for display fonts without them | off |
 | `format` | `json`, `compact`, `rss`, `text` | `json` |
 
-Each key is limited to 30 requests per minute. The data changes once an hour.
+Each key is limited to 30 requests per minute. The data changes at 6:07, 12:07, 16:07 and 20:07 Brussels time.
 
 **Compact format:** about 300 bytes per story, so 8 stories fit easily in a 16 KB buffer.
 
@@ -147,7 +147,7 @@ pnpm dev                         # the Worker, API and built front end on :8787
 
 The front end is a [Nuxt 4](https://nuxt.com) app with [Nuxt UI](https://ui.nuxt.com) in `app/`. It renders in the browser from `/api/public/news.json` and `nuxt generate` turns it into static files, so the Worker never runs for a page view. Pages have real paths: `/` is the front page, `/local`, `/national`, `/europe` and `/world` are the sections, and `/story/<id>` is a story. Old `/#story-<id>` and `/#local` links redirect to them. To work on the front end with hot reload, run `pnpm dev:web` next to `pnpm dev`; it serves on :3000 and sends `/api` to the Worker. The admin (`public/admin/`) is still plain HTML and JS.
 
-Then trigger a refresh with `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=7+*+*+*+*"` or the button in `/admin`. The AI binding always calls Workers AI remotely, even in local dev.
+Then trigger a refresh with `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=7+4,5,10,11,14,15,18,19+*+*+*"` or the button in `/admin`. The AI binding always calls Workers AI remotely, even in local dev.
 
 ```bash
 pnpm test        # feed parsing, clustering, ranking, API formats, AI output validation

@@ -2,6 +2,7 @@ import { requireAdmin } from "./access.ts";
 import { handleAdmin } from "./admin.ts";
 import { keyedNews, publicNews } from "./api.ts";
 import { errorResponse, HttpError } from "./http.ts";
+import { isRefreshTime } from "./schedule.ts";
 import type { Format } from "./formats.ts";
 
 export { RefreshWorkflow } from "./pipeline.ts";
@@ -46,6 +47,8 @@ export default {
   },
 
   async scheduled(controller, env, ctx) {
+    // The cron fires at both the summer and winter UTC hour; only the one that is a refresh time in Brussels runs.
+    if (!isRefreshTime(controller.scheduledTime)) return;
     // One instance per hour: the id makes a duplicate cron delivery a no-op.
     const hour = new Date(controller.scheduledTime).toISOString().slice(0, 13).replace(/\D/g, "");
     ctx.waitUntil(
