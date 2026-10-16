@@ -19,7 +19,11 @@ export default defineNuxtConfig({
     provider: "none",
     clientBundle: {
       scan: true,
-      icons: ["lucide:sun", "lucide:moon", "lucide:arrow-left", "lucide:arrow-right", "lucide:arrow-up-right"],
+      icons: ["lucide:sun", "lucide:moon", "lucide:arrow-left", "lucide:arrow-right", "lucide:arrow-up-right",
+      // Picture placeholders, one per topic (app/utils/format.ts TOPIC_ICONS).
+      "lucide:landmark", "lucide:trending-up", "lucide:users", "lucide:scale", "lucide:heart-pulse", "lucide:flask-conical",
+      "lucide:cpu", "lucide:leaf", "lucide:palette", "lucide:trophy", "lucide:train-front", "lucide:cloud-sun", "lucide:newspaper",
+    ],
     },
   },
 
