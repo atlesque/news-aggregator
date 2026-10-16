@@ -6,6 +6,16 @@ export const TOPIC_LABELS: Record<string, string> = {
 
 export const topicLabel = (topic: string) => TOPIC_LABELS[topic] ?? topic;
 
+/** Lucide icons for the picture placeholder. Listed in nuxt.config.ts so they are bundled. */
+export const TOPIC_ICONS: Record<string, string> = {
+  politics: "i-lucide-landmark", economy: "i-lucide-trending-up", society: "i-lucide-users", crime: "i-lucide-scale",
+  health: "i-lucide-heart-pulse", science: "i-lucide-flask-conical", technology: "i-lucide-cpu", environment: "i-lucide-leaf",
+  culture: "i-lucide-palette", sports: "i-lucide-trophy", mobility: "i-lucide-train-front", weather: "i-lucide-cloud-sun",
+  other: "i-lucide-newspaper",
+};
+
+export const topicIcon = (topic?: string) => (topic && TOPIC_ICONS[topic]) || TOPIC_ICONS.other!;
+
 export function ago(iso: string): string {
   const mins = Math.round((Date.now() - Date.parse(iso)) / 60000);
   if (mins < 1) return "just now";

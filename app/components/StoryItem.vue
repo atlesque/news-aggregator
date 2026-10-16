@@ -10,7 +10,7 @@ const primary = computed(() => props.story.sources[0]);
 
 <template>
   <article :class="['story', `priority-${story.priority}`, { lead }]" :data-story="story.id">
-    <StoryThumb v-if="image" :src="story.image" :eager="lead" />
+    <StoryThumb v-if="image" :src="story.image" :eager="lead" :placeholder="lead" :topic="story.topic" :source="primary?.name" />
     <div class="body">
       <StoryKicker :story="story" :show-region="showRegion" />
       <h3 :lang="story.lang || undefined">

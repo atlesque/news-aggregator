@@ -293,6 +293,21 @@ main:focus { outline: none; }
 
 .thumb { margin: 0; overflow: hidden; border-radius: var(--radius-sm); background: var(--surface-2); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
+/* Stands in for a lead picture that is missing or failed: teal light with a touch of ochre, the
+   topic's icon, and the outlet's name. */
+.thumb.placeholder {
+  position: relative; display: grid; place-items: center;
+  background:
+    radial-gradient(70% 90% at 88% 8%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 70%),
+    radial-gradient(60% 80% at 6% 100%, color-mix(in srgb, var(--topic) 16%, transparent), transparent 70%),
+    color-mix(in srgb, var(--primary) 9%, var(--surface));
+  color: var(--primary);
+}
+.thumb.placeholder .placeholder-icon { width: clamp(44px, 9vw, 84px); height: clamp(44px, 9vw, 84px); opacity: 0.5; }
+.thumb.placeholder figcaption {
+  position: absolute; left: 16px; bottom: 12px;
+  font-size: var(--step--1); font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75;
+}
 
 /* Top block: the lead story with its picture, and the next few beside it. */
 .top { display: grid; gap: 20px; margin-top: 16px; }
