@@ -1,3 +1,10 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
 /* Inter with its optical-size axis: headlines get the tighter display cut, small text the open text cut. */
 @font-face {
   font-family: "Inter";
@@ -55,31 +62,9 @@
   --tabbar-h: 0px;
 }
 
-/* Dark tokens apply when the system asks for dark and the reader hasn't picked light, or when they picked dark. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #131214;
-    --glow-1: rgb(200 110 80 / 0.13);
-    --glow-2: rgb(120 110 200 / 0.08);
-    --glow-3: rgb(60 150 145 / 0.08);
-    --surface: #1c1b1e;
-    --surface-2: #262428;
-    --ink: #eeeae4;
-    --ink-2: #cbc5bd;
-    --muted: #a39c93;
-    --line: #2f2d31;
-    --primary: #82cdc7;
-    --primary-soft: #173031;
-    --topic: #e2b56f;
-    --breaking: #ff7a72;
-    --breaking-soft: #3a1c1d;
-    --focus: #8fb0ff;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
-    --header-bg: rgb(19 18 20 / 0.9);
-  }
-}
-:root[data-theme="dark"] {
+/* Dark tokens: the color-mode module puts .dark on <html> when the system asks for dark and the
+   reader hasn't picked light, or when they picked dark. */
+:root.dark {
   color-scheme: dark;
   --bg: #131214;
   --glow-1: rgb(200 110 80 / 0.13);
@@ -99,6 +84,27 @@
   --focus: #8fb0ff;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
   --header-bg: rgb(19 18 20 / 0.9);
+}
+
+/* Nuxt UI components draw from the same palette: teal primary, red only for breaking news. */
+:root, :root.dark {
+  --ui-primary: var(--primary);
+  --ui-error: var(--breaking);
+  --ui-bg: var(--bg);
+  --ui-bg-muted: var(--surface-2);
+  --ui-bg-elevated: var(--surface-2);
+  --ui-bg-accented: var(--line);
+  --ui-bg-inverted: var(--ink);
+  --ui-text: var(--ink);
+  --ui-text-toned: var(--ink-2);
+  --ui-text-muted: var(--muted);
+  --ui-text-dimmed: var(--muted);
+  --ui-text-highlighted: var(--ink);
+  --ui-text-inverted: var(--bg);
+  --ui-border: var(--line);
+  --ui-border-muted: var(--line);
+  --ui-border-accented: var(--muted);
+  --ui-border-inverted: var(--ink);
 }
 
 /* Base */
@@ -183,16 +189,7 @@ p { text-wrap: pretty; }
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .icon-button:hover { background: var(--surface-2); }
-.icon-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-/* Show the icon of the theme you'd switch to. */
-.icon-sun { display: none; }
-:root[data-theme="dark"] .icon-sun { display: block; }
-:root[data-theme="dark"] .icon-moon { display: none; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .icon-sun { display: block; }
-  :root:not([data-theme="light"]) .icon-moon { display: none; }
-}
-
+.icon-button .iconify { width: 20px; height: 20px; }
 /* Section navigation: pills in the header on wide screens, a bottom tab bar on phones. */
 .regions ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
 .regions a {
@@ -228,20 +225,23 @@ main { display: block; padding-top: 20px; padding-bottom: 24px; min-height: 60vh
 main:focus { outline: none; }
 
 /* Breaking */
+/* The label floats at the start of the first line, so long headlines wrap underneath it
+   instead of leaving an empty column below the label. */
 .breaking {
-  display: flex; gap: 10px 18px; align-items: baseline; flex-wrap: wrap;
+  display: flow-root;
   margin-bottom: 16px; padding: 10px 14px;
   background: var(--breaking-soft); border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--breaking) 25%, transparent);
 }
 .breaking[hidden] { display: none; }
 .breaking-label {
-  display: inline-flex; align-items: center; gap: 8px; margin: 0; flex: none;
-  font-size: var(--step--1); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--breaking);
+  float: left; display: inline-flex; align-items: center; gap: 8px; margin: 0 18px 0 0;
+  line-height: calc(var(--step-0) * 1.4); font-size: var(--step--1); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--breaking);
 }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.35; } }
-.breaking ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; flex: 1 1 12rem; font-weight: 600; line-height: 1.4; }
+.breaking ul { list-style: none; margin: 0; padding: 0; font-size: var(--step-0); font-weight: 600; line-height: 1.4; }
+.breaking li + li { margin-top: 4px; }
 
 /* Topic filter: one scrollable row, so it never pushes the news down. */
 .topics {
@@ -334,7 +334,7 @@ main:focus { outline: none; }
 /* Story page */
 .detail { max-width: 44rem; margin: 0 auto; }
 .back {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-bottom: 8px;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-bottom: 8px; padding: 0;
   font-size: 0.9375rem; font-weight: 550; color: var(--ink-2);
 }
 .detail h1 { margin: 2px 0 0; font-size: clamp(1.625rem, 1.2rem + 1.8vw, 2.5rem); line-height: 1.15; letter-spacing: -0.025em; font-weight: 700; }
@@ -344,15 +344,16 @@ main:focus { outline: none; }
 .read-on { margin: 24px 0 0; }
 .read-on a {
   display: inline-flex; align-items: center; gap: 4px; min-height: 48px; padding: 12px 22px;
-  border-radius: 999px; background: var(--ink); color: var(--bg); font-weight: 600;
+  border-radius: 999px; background: var(--ink); color: var(--bg); font-size: inherit; font-weight: 600; line-height: inherit;
 }
+.read-on a .iconify, .also a .iconify { width: 1em; height: 1em; }
 .read-on a:hover { text-decoration: none; opacity: 0.88; }
 .also { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); }
 .also h2 { margin: 0 0 10px; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
 .also ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .also a {
   display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px;
-  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 0.9375rem;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 0.9375rem; font-weight: 400;
 }
 .also a:hover { text-decoration: none; border-color: var(--muted); }
 .ai-note { margin: 24px 0 0; font-size: 0.8125rem; color: var(--muted); }
