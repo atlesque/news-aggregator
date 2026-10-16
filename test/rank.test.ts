@@ -6,6 +6,7 @@ import { buildSnapshot, nextRefresh, type StoryInput } from "../src/rank.ts";
 import { DEFAULT_SETTINGS } from "../src/settings.ts";
 
 const now = Date.parse("2026-10-15T12:30:00Z");
+const TWO = [{ name: "a", url: "x" }, { name: "b", url: "y" }];
 const story = (id: number, o: Partial<StoryInput> = {}): StoryInput => ({
   id, headline: `Story ${id}`, summary: `Summary ${id}`, region: "local", topic: "society", priority: 2, breaking: false, pinned: false,
   firstPublishedAt: now - 3_600_000, lastPublishedAt: now - 3_600_000, image: null, sources: [{ name: "VRT NWS", url: `https://e.x/${id}` }], ...o,
@@ -17,7 +18,7 @@ test("snapshot ranks by priority, breaking and coverage, and applies region quot
     [
       story(1, { priority: 1 }),
       story(2, { priority: 3 }),
-      story(3, { breaking: true }),
+      story(3, { breaking: true, sources: TWO }),
       story(4),
       story(5, { region: "europe", priority: 3 }),
       story(6, { region: "national", sources: [{ name: "a", url: "x" }, { name: "b", url: "y" }] }),
@@ -28,11 +29,46 @@ test("snapshot ranks by priority, breaking and coverage, and applies region quot
   );
   assert.deepEqual(snap.stories.map((s) => s.id), [3, 2, 6]);
   assert.equal(snap.stories[0].breaking, true);
+  assert.equal(snap.stories[0].priority, "high");
+  // High priority, but only one outlet has it: not marked important.
+  assert.equal(snap.stories[1].priority, "medium");
 });
 
-test("breaking expires after six hours", () => {
-  const snap = buildSnapshot([story(1, { breaking: true, lastPublishedAt: now - 7 * 3_600_000 })], DEFAULT_SETTINGS, now);
+test("breaking only shows within six hours of the first report", () => {
+  const snap = buildSnapshot(
+    [story(1, { breaking: true, priority: 3, sources: TWO, firstPublishedAt: now - 7 * 3_600_000, lastPublishedAt: now - 600_000 })],
+    DEFAULT_SETTINGS,
+    now,
+  );
   assert.equal(snap.stories[0].breaking, false);
+  assert.equal(snap.stories[0].priority, "high");
+});
+
+test("breaking needs a second outlet", () => {
+  const snap = buildSnapshot([story(1, { breaking: true, priority: 3 })], DEFAULT_SETTINGS, now);
+  assert.equal(snap.stories[0].breaking, false);
+  assert.equal(snap.stories[0].priority, "medium");
+});
+
+test("a second outlet merged in at publish time counts", () => {
+  const vec = new Float32Array([1, 0, 0]);
+  const snap = buildSnapshot(
+    [story(1, { priority: 3, vec }), story(2, { region: "national", vec, sources: [{ name: "HLN", url: "https://e.x/b" }] })],
+    DEFAULT_SETTINGS,
+    now,
+  );
+  assert.equal(snap.stories.length, 1);
+  assert.equal(snap.stories[0].priority, "high");
+});
+
+test("at most four important and two breaking stories, best first", () => {
+  const stories = Array.from({ length: 8 }, (_, i) =>
+    story(i + 1, { priority: 3, breaking: true, sources: TWO, lastPublishedAt: now - i * 600_000 }),
+  );
+  const settings = { ...DEFAULT_SETTINGS, quotas: { local: 10, national: 0, europe: 0, world: 0 } };
+  const snap = buildSnapshot(stories, settings, now);
+  assert.deepEqual(snap.stories.filter((s) => s.priority === "high").map((s) => s.id), [1, 2, 3, 4]);
+  assert.deepEqual(snap.stories.filter((s) => s.breaking).map((s) => s.id), [1, 2]);
 });
 
 test("next refresh is a few minutes after the next :07", () => {
@@ -40,7 +76,7 @@ test("next refresh is a few minutes after the next :07", () => {
 });
 
 test("API filters and compact output", () => {
-  const snap = buildSnapshot([story(1, { priority: 3, headline: "Oekraïne" }), story(2, { priority: 1 })], DEFAULT_SETTINGS, now);
+  const snap = buildSnapshot([story(1, { priority: 3, headline: "Oekraïne", sources: TWO }), story(2, { priority: 1 })], DEFAULT_SETTINGS, now);
   const q = parseQuery(new URLSearchParams("minPriority=high&ascii=1&format=compact&region=local,bogus"));
   assert.deepEqual(q.regions, ["local"]);
   const picked = selectStories(snap, q);

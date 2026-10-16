@@ -15,7 +15,7 @@ Every hour at minute 7, a cron trigger starts a [Workflow](https://developers.cl
    - a region, limited to the regions its sources are allowed to cover;
    - a topic, a priority (high/medium/low) and a breaking flag;
    - a "newsworthy" flag, so ads, quizzes and listings are dropped.
-4. **Publish** a snapshot. Stories are scored by priority, breaking, number of reporting sources and age. A second duplicate check compares the rewritten headlines, which are now all in one language. Each region is then filled up to its quota (default: Bruges 8, Belgium 10, Europe 6, World 8). The snapshot is stored as a single D1 row.
+4. **Publish** a snapshot. Stories are scored by priority, breaking, number of reporting sources and age. A second duplicate check compares the rewritten headlines, which are now all in one language. Each region is then filled up to its quota (default: Bruges 8, Belgium 10, Europe 6, World 8). Only the best four high-priority stories reported by at least two outlets stay "high" (shown as Important, first on the page); the others are published as medium. At most two of those can be breaking, and only within six hours of the first report. The snapshot is stored as a single D1 row.
 
 Each step runs in its own invocation with its own CPU budget and retries independently. A failing feed is recorded on the source and skipped. This keeps every step inside the free plan's 10 ms CPU limit.
 
