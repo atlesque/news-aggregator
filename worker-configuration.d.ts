@@ -3,6 +3,7 @@
 // Runtime types generated with workerd@1.20261006.1 2026-10-01
 interface __BaseEnv_Env {
 	DB: D1Database;
+	IMAGES: R2Bucket;
 	API_LIMITER: RateLimit;
 	AI: Ai;
 	ASSETS: Fetcher;

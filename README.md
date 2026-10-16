@@ -8,14 +8,15 @@ A calm news front page, refreshed four times a day, for Bruges, Belgium, Europe 
 
 At 6:07, 12:07, 16:07 and 20:07 Brussels time, a cron trigger starts a [Workflow](https://developers.cloudflare.com/workflows/) that runs these steps. Cron triggers run in UTC, so each time fires at both its summer and winter UTC hour and the Worker skips the one that isn't the right Brussels time:
 
-1. **Fetch** each enabled source (one step per source, using conditional GETs). New articles are stored in D1, keyed by a hash of their canonical URL, so refetches are free.
+1. **Fetch** each enabled source (one step per source, using conditional GETs). New articles are stored in D1, keyed by a hash of their canonical URL, so refetches are free. A second key, the outlet's host plus the headline's words, catches the same article reached under another URL (Bing hands out one Brussels Times piece under several section paths, truncated or with tracking tags), from any source. Items older than the three-day window are never ingested, so a deleted article can't come back as new.
 2. **Cluster** new articles into stories. Each article is embedded with the multilingual `@cf/baai/bge-m3` model. It joins the most similar recent story or starts a new one, so a Dutch HLN report and an English Brussels Times report of the same event become one story.
 3. **Enrich** new and updated stories in batches of 8 with one Workers AI call per batch (default `@cf/google/gemma-4-26b-a4b-it`). Each story gets:
    - a neutral headline with no clickbait and a 1–2 sentence summary, in the language of the original reports (Dutch stays Dutch, English stays English). You can set a single language in the admin to translate everything instead;
    - a region, limited to the regions its sources are allowed to cover;
    - a topic, a priority (high/medium/low) and a breaking flag;
    - a "newsworthy" flag, so ads, quizzes and listings are dropped.
-4. **Publish** a snapshot. Stories are scored by priority, breaking, number of reporting sources and age. A second duplicate check compares the rewritten headlines, which are now all in one language. Each region is then filled up to its quota (default: Bruges 8, Belgium 10, Europe 6, World 8). Only the best four high-priority stories reported by at least two outlets stay "high" (shown as Important, first on the page); the others are published as medium. At most two of those can be breaking, and only within six hours of the first report. The snapshot is stored as a single D1 row.
+4. **Pictures.** Each story gets one picture, copied into R2 and served from `/img/…`, so the page no longer depends on hotlinking. The feed images are tried first, then the `og:image` of the articles' own pages (Euronews, Politico and the Bing searches carry no images in their feeds, and BBC's are 240 px thumbnails). The first picture at least 600 px wide wins, otherwise the widest one found. A story with a small or missing picture is looked at again when a new article joins it; one with none at all shows the front end's topic placeholder.
+5. **Publish** a snapshot. Stories are scored by priority, breaking, number of reporting sources and age. A second duplicate check compares the rewritten headlines, which are now all in one language. Each region is then filled up to its quota (default: Bruges 8, Belgium 10, Europe 6, World 8). Only the best four high-priority stories reported by at least two outlets stay "high" (shown as Important, first on the page); the others are published as medium. At most two of those can be breaking, and only within six hours of the first report. The snapshot is stored as a single D1 row.
 
 Each step runs in its own invocation with its own CPU budget and retries independently. A failing feed is recorded on the source and skipped. This keeps every step inside the free plan's 10 ms CPU limit.
 
@@ -131,9 +132,9 @@ A Cloudflare Access application protects `/admin` and `/api/admin/*`. The Worker
 ## Free-tier budget
 
 - **Workers:** the static front page doesn't count. The JSON endpoints are well under 100k requests/day for personal use, and the edge cache keeps D1 reads tiny.
-- **Workflows:** about 30 steps per run × 24 runs ≈ 720 steps/day (limit 3,000).
+- **Workflows:** about 30–80 steps per run × 4 runs a day.
 - **Workers AI** (limit 10,000 neurons/day): at most `maxEnrichPerRun` stories (default 40) are rewritten per run, in batches of 8. Once the backlog from the first run is cleared, each run handles only new or changed stories, typically 10–30, which is a few hundred neurons. Lower `maxEnrichPerRun` in settings if you add many sources.
-- **D1:** articles and stories older than 7 days are deleted, and only the last 48 snapshots are kept.
+- **D1 and R2 (three-day rolling window):** every refresh deletes stories whose newest article is more than three days old, with their articles, summaries and pictures, plus snapshots older than that (the latest always stays). Pinned stories are kept. The picture store stays around a few hundred files and well under R2's free 10 GB.
 
 ## Development
 

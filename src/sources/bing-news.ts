@@ -45,7 +45,7 @@ export const bingNews: SourceModule = {
       title: i.title,
       summary: i.summary.replace(/\s*\.\.\.$/, "…"),
       publishedAt: i.publishedAt,
-      image: null,
+      image: i.image,
       hint: i.categories[0] ? `Publisher: ${i.categories[0]}` : null,
     }));
     return { items, etag, lastModified };

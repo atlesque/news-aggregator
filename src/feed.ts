@@ -63,6 +63,11 @@ function findImage(xml: string): string | null {
       bestWidth = width;
     }
   }
+  // Bing News puts its thumbnail in a tag of its own.
+  if (!best) {
+    const bing = tagText(xml, "News:Image");
+    if (bing && /^https:\/\//.test(bing)) best = bing;
+  }
   return best;
 }
 

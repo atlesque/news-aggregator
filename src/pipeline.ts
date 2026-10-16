@@ -1,5 +1,6 @@
 // The news refresh (6:07, 12:07, 16:07 and 20:07 Brussels time), as a Cloudflare Workflow. Each piece of work is its own step:
-//   fetch (one step per source) → cluster (batches of new articles) → enrich (batches of stories) → publish.
+//   fetch (one step per source) → cluster (batches of new articles) → enrich (batches of stories)
+//   → images (batches of stories) → publish → prune (the rolling three-day window).
 // Steps run in separate invocations with their own CPU budget and retry independently, so a
 // slow feed or a failed AI call never sinks the whole run, and the free plan's 10 ms CPU
 // limit per invocation is respected.
@@ -11,17 +12,17 @@ import { buildSnapshot, type StoryInput } from "./rank.ts";
 import { loadSettings, REGIONS, type Region, type Settings } from "./settings.ts";
 import { getModule } from "./sources/index.ts";
 import { list, num } from "./sources/types.ts";
-import { canonicalUrl, detectLang, matchesAny, sha256Hex, truncate } from "./text.ts";
+import { backfillDedupKeys, dropIngested, hostOf, IMAGE_BATCH, imageBatch, prune, RETENTION_DAYS } from "./store.ts";
+import { canonicalUrl, dedupKey, detectLang, matchesAny, sha256Hex, truncate } from "./text.ts";
 
 const HOUR = 3_600_000;
 const CLUSTER_BATCH = 16;
 const ENRICH_BATCH = 8;
+const MAX_IMAGE_BATCHES = 40;
 /** New articles are only compared with stories this recent. */
 const CLUSTER_WINDOW_HOURS = 48;
 /** A story that gained articles is re-written at most this often. */
 const REENRICH_AFTER_HOURS = 2;
-/** Articles and stories older than this are deleted. */
-const RETENTION_DAYS = 7;
 
 export interface RefreshParams {
   trigger: "cron" | "admin";
@@ -41,7 +42,7 @@ interface SourceRow {
 export class RefreshWorkflow extends WorkflowEntrypoint<Env, RefreshParams> {
   async run(event: WorkflowEvent<RefreshParams>, step: WorkflowStep) {
     const runId = event.instanceId;
-    const stats = { sources: 0, failedSources: 0, newArticles: 0, clustered: 0, newStories: 0, enriched: 0, published: 0 };
+    const stats = { sources: 0, failedSources: 0, newArticles: 0, repeats: 0, clustered: 0, newStories: 0, enriched: 0, images: 0, published: 0, pruned: 0 };
 
     await step.do("start", async () => {
       await this.env.DB.prepare("INSERT OR IGNORE INTO runs (id, trigger, started_at, status) VALUES (?, ?, ?, 'running')")
@@ -55,6 +56,9 @@ export class RefreshWorkflow extends WorkflowEntrypoint<Env, RefreshParams> {
         return results.map((r) => r.id);
       });
 
+      // Rows from before dedup keys existed get theirs, so the repeat check below sees them.
+      await step.do("backfill dedup keys", () => backfillDedupKeys(this.env.DB));
+
       for (const id of sourceIds) {
         // A failing feed is recorded on the source and skipped; it must not fail the run.
         const result = await step.do(`fetch source ${id}`, { retries: { limit: 1, delay: "10 seconds" }, timeout: "60 seconds" }, () =>
@@ -63,6 +67,7 @@ export class RefreshWorkflow extends WorkflowEntrypoint<Env, RefreshParams> {
         stats.sources++;
         if (result.error) stats.failedSources++;
         stats.newArticles += result.added;
+        stats.repeats += result.repeats;
       }
 
       const settings = await step.do("load settings", () => loadSettings(this.env.DB));
@@ -86,8 +91,16 @@ export class RefreshWorkflow extends WorkflowEntrypoint<Env, RefreshParams> {
         if (r.picked < limit) break;
       }
 
-      stats.published = await step.do("publish", () => publish(this.env.DB, Date.now()));
-      await step.do("prune", () => prune(this.env.DB, Date.now()));
+      for (let i = 0; i < MAX_IMAGE_BATCHES; i++) {
+        const r = await step.do(`images batch ${i}`, { retries: { limit: 1, delay: "10 seconds" }, timeout: "3 minutes" }, () =>
+          imageBatch(this.env, settings, Date.now()),
+        );
+        stats.images += r.stored;
+        if (r.picked < IMAGE_BATCH) break;
+      }
+
+      stats.published = await step.do("publish", () => publish(this.env.DB, Date.now(), this.env.SITE_URL));
+      stats.pruned = await step.do("prune", () => prune(this.env, Date.now()));
 
       await step.do("finish", async () => {
         await this.env.DB.prepare("UPDATE runs SET finished_at = ?, status = 'ok', stats = ? WHERE id = ?")
@@ -107,16 +120,16 @@ export class RefreshWorkflow extends WorkflowEntrypoint<Env, RefreshParams> {
 }
 
 /** Fetches one source and stores its new articles. Never throws: errors are recorded on the source. */
-export async function fetchSource(db: D1Database, id: number, now: number): Promise<{ added: number; error: string | null }> {
+export async function fetchSource(db: D1Database, id: number, now: number): Promise<{ added: number; repeats: number; error: string | null }> {
   const src = await db.prepare("SELECT * FROM sources WHERE id = ?").bind(id).first<SourceRow>();
-  if (!src || !src.enabled) return { added: 0, error: null };
+  if (!src || !src.enabled) return { added: 0, repeats: 0, error: null };
   const mod = getModule(src.module);
   try {
     if (!mod) throw new Error(`Unknown module "${src.module}"`);
     const config = JSON.parse(src.config) as Record<string, unknown>;
     const result = await mod.fetch(config, { etag: src.etag, lastModified: src.last_modified });
 
-    const maxAge = num(config, "maxAgeHours", 36) * HOUR;
+    const maxAge = Math.min(num(config, "maxAgeHours", 36) * HOUR, RETENTION_DAYS * 24 * HOUR);
     const include = list(config, "includeKeywords");
     const exclude = list(config, "excludeKeywords");
     const items = result.items
@@ -127,24 +140,29 @@ export async function fetchSource(db: D1Database, id: number, now: number): Prom
       .slice(0, num(config, "maxItems", 40));
 
     let added = 0;
+    let repeats = 0;
     if (items.length) {
       const rows = await Promise.all(
         items.map(async (i) => {
           const url = canonicalUrl(i.url);
-          return { ...i, url, id: (await sha256Hex(url)).slice(0, 32) };
+          return { ...i, url, id: (await sha256Hex(url)).slice(0, 32), key: dedupKey(url, i.title) };
         }),
       );
-      const results = await db.batch(
-        rows.map((r) =>
-          db
-            .prepare(
-              `INSERT OR IGNORE INTO articles (id, source_id, url, title, summary, image, hint, published_at, fetched_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            )
-            .bind(r.id, src.id, r.url, truncate(r.title, 300), truncate(r.summary, 1000), r.image, r.hint, r.publishedAt, now),
-        ),
-      );
-      added = results.reduce((n, r) => n + (r.meta.changes ?? 0), 0);
+      const fresh = await dropIngested(db, rows);
+      repeats = rows.length - fresh.length;
+      if (fresh.length) {
+        const results = await db.batch(
+          fresh.map((r) =>
+            db
+              .prepare(
+                `INSERT OR IGNORE INTO articles (id, source_id, url, title, summary, image, hint, published_at, fetched_at, dedup_key)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              )
+              .bind(r.id, src.id, r.url, truncate(r.title, 300), truncate(r.summary, 1000), r.image, r.hint, r.publishedAt, now, r.key),
+          ),
+        );
+        added = results.reduce((n, r) => n + (r.meta.changes ?? 0), 0);
+      }
     }
 
     await db
@@ -153,11 +171,11 @@ export async function fetchSource(db: D1Database, id: number, now: number): Prom
       )
       .bind(now, result.notModified ? "not modified" : `ok (${result.items.length} items)`, added, result.etag ?? null, result.lastModified ?? null, id)
       .run();
-    return { added, error: null };
+    return { added, repeats, error: null };
   } catch (err) {
     const message = truncate(err instanceof Error ? err.message : String(err), 300);
     await db.prepare("UPDATE sources SET last_fetch_at = ?, last_status = 'error', last_error = ?, last_new = 0 WHERE id = ?").bind(now, message, id).run();
-    return { added: 0, error: message };
+    return { added: 0, repeats: 0, error: message };
   }
 }
 
@@ -293,11 +311,11 @@ export async function enrichBatch(env: Env, settings: Settings, limit: number, n
 }
 
 /** Loads publishable stories with their sources, for the snapshot. */
-export async function loadStoriesForSnapshot(db: D1Database, settings: Settings, now: number): Promise<StoryInput[]> {
+export async function loadStoriesForSnapshot(db: D1Database, settings: Settings, now: number, siteUrl = ""): Promise<StoryInput[]> {
   const since = now - Math.max(settings.windowHours, 48) * HOUR;
   const { results: stories } = await db
     .prepare(
-      `SELECT id, headline, summary, region, topic, priority, breaking, pinned, first_published_at, last_published_at, image, headline_vec, lang
+      `SELECT id, headline, summary, region, topic, priority, breaking, pinned, first_published_at, last_published_at, image, image_key, headline_vec, lang
        FROM stories
        WHERE headline IS NOT NULL AND newsworthy = 1 AND hidden = 0 AND (last_published_at > ? OR pinned = 1)`,
     )
@@ -305,6 +323,7 @@ export async function loadStoriesForSnapshot(db: D1Database, settings: Settings,
     .all<{
       id: number; headline: string; summary: string; region: Region; topic: StoryInput["topic"]; priority: 1 | 2 | 3;
       breaking: number; pinned: number; first_published_at: number; last_published_at: number; image: string | null;
+      image_key: string | null;
       headline_vec: ArrayBuffer | null;
       lang: string | null;
     }>();
@@ -323,7 +342,9 @@ export async function loadStoriesForSnapshot(db: D1Database, settings: Settings,
     const arr = byStory.get(s.story_id) ?? [];
     // Credit the actual outlet for aggregator sources like Google News.
     const name = s.hint?.startsWith("Publisher: ") ? s.hint.slice(11) : s.name;
-    if (!arr.some((x) => x.name === name)) arr.push({ name, url: s.url });
+    // One outlet counts once, even when two searches name it differently ("kw" and "KW.be").
+    const host = hostOf(s.url);
+    if (!arr.some((x) => x.name === name || hostOf(x.url) === host)) arr.push({ name, url: s.url });
     byStory.set(s.story_id, arr);
   }
 
@@ -338,7 +359,8 @@ export async function loadStoriesForSnapshot(db: D1Database, settings: Settings,
     pinned: !!s.pinned,
     firstPublishedAt: s.first_published_at,
     lastPublishedAt: s.last_published_at,
-    image: s.image,
+    // Our own copy when there is one; the original URL otherwise.
+    image: s.image_key ? `${siteUrl}/img/${s.image_key}` : s.image,
     sources: byStory.get(s.id) ?? [],
     vec: fromBlob(s.headline_vec),
     // The model's own language label is unreliable; trust the text when it is clear.
@@ -347,20 +369,9 @@ export async function loadStoriesForSnapshot(db: D1Database, settings: Settings,
 }
 
 /** Builds and stores the front-page snapshot. Returns the number of stories in it. */
-export async function publish(db: D1Database, now: number): Promise<number> {
+export async function publish(db: D1Database, now: number, siteUrl: string): Promise<number> {
   const settings = await loadSettings(db);
-  const snapshot = buildSnapshot(await loadStoriesForSnapshot(db, settings, now), settings, now);
+  const snapshot = buildSnapshot(await loadStoriesForSnapshot(db, settings, now, siteUrl.replace(/\/+$/, "")), settings, now);
   await db.prepare("INSERT INTO snapshots (created_at, json) VALUES (?, ?)").bind(now, JSON.stringify(snapshot)).run();
   return snapshot.stories.length;
-}
-
-export async function prune(db: D1Database, now: number): Promise<void> {
-  const cutoff = now - RETENTION_DAYS * 24 * HOUR;
-  await db.batch([
-    db.prepare("DELETE FROM articles WHERE published_at < ? AND story_id IN (SELECT id FROM stories WHERE last_published_at < ? AND pinned = 0)").bind(cutoff, cutoff),
-    db.prepare("DELETE FROM stories WHERE last_published_at < ? AND pinned = 0").bind(cutoff),
-    db.prepare("DELETE FROM articles WHERE published_at < ? AND story_id IS NULL").bind(cutoff),
-    db.prepare("DELETE FROM snapshots WHERE id NOT IN (SELECT id FROM snapshots ORDER BY id DESC LIMIT 48)"),
-    db.prepare("DELETE FROM runs WHERE started_at < ?").bind(now - 30 * 24 * HOUR),
-  ]);
 }
