@@ -62,7 +62,7 @@ useHead({ title: computed(() => (regionName.value ? `${regionName.value} · ${ti
         <!-- Top block: the lead story with its picture, and the next best stories beside it. When
              there are important stories, the block holds just those, in a box of its own. -->
         <section :class="['top', { important: grouped }]" aria-labelledby="h-top">
-          <h2 v-if="grouped" id="h-top" class="important-label">Important</h2>
+          <h2 v-if="grouped" id="h-top" class="important-label">Headlines</h2>
           <h2 v-else id="h-top" class="sr-only">Top stories</h2>
           <StoryItem :story="lead" lead :show-region="!region" />
           <ul v-if="top.length" class="side" role="list">
