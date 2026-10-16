@@ -33,10 +33,12 @@
   // Summaries, translation, ranking (text model) and deduplication (embeddings).
   "ai": { "binding": "AI" },
 
-  // The hourly refresh. Each source fetch, embedding batch and AI batch is its own step,
+  // The refresh, at 6:07, 12:07, 16:07 and 20:07 Brussels time. Crons run in UTC, so each time
+  // fires at both its summer (CEST) and winter (CET) UTC hour; scheduled() skips the wrong one.
+  // Each source fetch, embedding batch and AI batch is its own step,
   // so every step stays well inside the free plan's 10 ms CPU budget and retries on its own.
   "workflows": [{ "name": "news-refresh", "binding": "REFRESH", "class_name": "RefreshWorkflow" }],
-  "triggers": { "crons": ["7 * * * *"] },
+  "triggers": { "crons": ["7 4,5,10,11,14,15,18,19 * * *"] },
 
   // Per-API-key limit (per Cloudflare location). Must be 10 or 60 seconds.
   "ratelimits": [{ "name": "API_LIMITER", "namespace_id": "4201", "simple": { "limit": 30, "period": 60 } }],

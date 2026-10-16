@@ -9,7 +9,7 @@ useHead({
 
 const updated = computed(() => (data.value?.generatedAt ? `Updated ${clock(data.value.generatedAt)}.` : ""));
 
-// Pick up the next hourly edition when the tab comes back after it was published.
+// Pick up the next edition when the tab comes back after it was published.
 function onVisible() {
   const next = data.value?.nextUpdateAt;
   if (document.visibilityState === "visible" && next && Date.now() > Date.parse(next)) load();

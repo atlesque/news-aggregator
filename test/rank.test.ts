@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parseQuery, renderCompact, selectStories } from "../src/formats.ts";
 import { parseEnrichment } from "../src/enrich.ts";
-import { buildSnapshot, nextRefresh, type StoryInput } from "../src/rank.ts";
+import { buildSnapshot, type StoryInput } from "../src/rank.ts";
+import { isRefreshTime, nextRefresh } from "../src/schedule.ts";
 import { DEFAULT_SETTINGS } from "../src/settings.ts";
 
 const now = Date.parse("2026-10-15T12:30:00Z");
@@ -71,8 +72,23 @@ test("at most four important and two breaking stories, best first", () => {
   assert.deepEqual(snap.stories.filter((s) => s.breaking).map((s) => s.id), [1, 2]);
 });
 
-test("next refresh is a few minutes after the next :07", () => {
-  assert.equal(new Date(nextRefresh(now)).toISOString(), "2026-10-15T13:10:00.000Z");
+test("refreshes at 6, 12, 16 and 20 Brussels time, summer and winter", () => {
+  const iso = (t: number) => new Date(t).toISOString();
+  // Summer time (UTC+2): 12:30 UTC is 14:30 in Brussels, so next is 16:07 = 14:07 UTC.
+  assert.equal(iso(nextRefresh(now)), "2026-10-15T14:10:00.000Z");
+  // After 20:07 the next one is 6:07 the next morning.
+  assert.equal(iso(nextRefresh(Date.parse("2026-10-15T18:30:00Z"))), "2026-10-16T04:10:00.000Z");
+  // Across the DST change on 25 October, 6:07 Brussels is 5:07 UTC.
+  assert.equal(iso(nextRefresh(Date.parse("2026-10-24T18:30:00Z"))), "2026-10-25T05:10:00.000Z");
+  // Each cron hour fires twice a day per time; only the right one runs.
+  assert.ok(isRefreshTime(Date.parse("2026-10-16T04:07:00Z")));
+  assert.ok(!isRefreshTime(Date.parse("2026-10-16T05:07:00Z")));
+  assert.ok(isRefreshTime(Date.parse("2026-12-01T05:07:00Z")));
+  assert.ok(!isRefreshTime(Date.parse("2026-12-01T04:07:00Z")));
+  const winter = [4, 5, 10, 11, 14, 15, 18, 19].filter((h) => isRefreshTime(Date.UTC(2026, 11, 1, h, 7)));
+  const summer = [4, 5, 10, 11, 14, 15, 18, 19].filter((h) => isRefreshTime(Date.UTC(2026, 6, 1, h, 7)));
+  assert.deepEqual(winter, [5, 11, 15, 19]);
+  assert.deepEqual(summer, [4, 10, 14, 18]);
 });
 
 test("API filters and compact output", () => {

@@ -2,6 +2,7 @@
 
 import { similarity } from "./cluster.ts";
 import { REGIONS, type Region, type Settings, type Topic } from "./settings.ts";
+import { nextRefresh } from "./schedule.ts";
 
 export type Priority = "high" | "medium" | "low";
 export const PRIORITY_NAMES: Record<number, Priority> = { 3: "high", 2: "medium", 1: "low" };
@@ -69,15 +70,6 @@ export function scoreStory(s: StoryInput, now: number): number {
   const priority = s.priority === 3 ? 30 : s.priority === 2 ? 15 : 0;
   const coverage = Math.min(Math.max(s.sources.length - 1, 0), 4) * 4;
   return priority + (isBreaking(s, now) ? 25 : 0) + coverage + (s.pinned ? 100 : 0) - ageHours * 1.2;
-}
-
-/** The next hourly refresh: the cron runs at minute 7. */
-export function nextRefresh(now: number): number {
-  const d = new Date(now);
-  d.setUTCMinutes(7, 0, 0);
-  let t = d.getTime();
-  if (t <= now) t += HOUR;
-  return t + 3 * 60_000; // allow the run a few minutes to finish
 }
 
 export function buildSnapshot(stories: StoryInput[], settings: Settings, now: number): Snapshot {
