@@ -45,6 +45,8 @@ export default defineNuxtConfig({
         { rel: "preload", href: "/fonts/inter-latin-opsz-normal.woff2", as: "font", type: "font/woff2", crossorigin: "" },
         { rel: "preload", href: "/api/public/news.json", as: "fetch", crossorigin: "anonymous" },
       ],
+      // Shared opt-in consent banner; loads analytics only after "Allow".
+      script: [{ src: "https://tools.atlesque.dev/consent.js", defer: true }],
       noscript: [{ innerHTML: '<p class="wrap">This page needs JavaScript to show the news.</p>', tagPosition: "bodyClose" }],
     },
   },

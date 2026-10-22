@@ -33,6 +33,10 @@ onBeforeUnmount(() => document.removeEventListener("visibilitychange", onVisible
 
     <footer class="wrap footer">
       <p>Summaries are written by AI from the linked reports and can contain mistakes. {{ updated }}</p>
+      <p class="footer-links">
+        <a href="https://tools.atlesque.dev/privacy">Privacy</a>
+        <button type="button" data-privacy-settings>Privacy settings</button>
+      </p>
     </footer>
 
     <span id="new-tab-hint" hidden>Opens the source in a new tab</span>

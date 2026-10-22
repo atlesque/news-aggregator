@@ -393,6 +393,8 @@ main:focus { outline: none; }
 /* Footer */
 .footer { margin-top: 8px; padding-top: 16px; padding-bottom: 24px; border-top: 1px solid var(--line); font-size: var(--step--1); color: var(--ink-2); }
 .footer p { margin: 0; max-width: 70ch; color: var(--muted); }
+.footer .footer-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; }
+.footer-links a, .footer-links button { padding: 0; border: 0; background: none; font: inherit; color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) {
   body::before { animation: none; }
