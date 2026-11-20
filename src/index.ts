@@ -1,6 +1,6 @@
 import { requireAdmin } from "./access.ts";
 import { handleAdmin } from "./admin.ts";
-import { keyedNews, publicNews } from "./api.ts";
+import { keyedDashboard, keyedNews, publicNews } from "./api.ts";
 import { errorResponse, HttpError } from "./http.ts";
 import { serveImage } from "./images.ts";
 import { isRefreshTime } from "./schedule.ts";
@@ -31,6 +31,10 @@ export default {
       if (path in KEYED_ROUTES) {
         if (request.method !== "GET" && request.method !== "HEAD") throw new HttpError(405, "Method not allowed");
         return await keyedNews(request, env, ctx, KEYED_ROUTES[path]);
+      }
+      if (path === "/api/v1/dashboard.json") {
+        if (request.method !== "GET" && request.method !== "HEAD") throw new HttpError(405, "Method not allowed");
+        return await keyedDashboard(request, env, ctx);
       }
       if (path.startsWith("/api/admin/")) {
         const email = await requireAdmin(request, env);
