@@ -14,6 +14,7 @@ const KEYED_ROUTES: Record<string, Format | null> = {
   "/api/v1/news.rss": "rss",
   "/api/v1/news.txt": "text",
   "/api/v1/news.compact.json": "compact",
+  "/api/v1/news.display.json": "display",
 };
 
 export default {

@@ -4,11 +4,12 @@ import type { PublicStory, Snapshot } from "./rank.ts";
 import { REGIONS, TOPICS } from "./settings.ts";
 import { asciiFold, truncate } from "./text.ts";
 
-export type Format = "json" | "compact" | "rss" | "text";
+export type Format = "json" | "compact" | "display" | "rss" | "text";
 
 export interface ApiQuery {
   regions: string[];
   topics: string[];
+  excludeTopics: string[];
   minPriority: 1 | 2 | 3;
   breakingOnly: boolean;
   limit: number;
@@ -35,17 +36,23 @@ export function parseQuery(params: URLSearchParams, defaultFormat: Format = "jso
     return v === null ? def : v === "1" || v === "true" || v === "yes";
   };
   const fmt = params.get("format");
+  const format: Format =
+    fmt === "compact" || fmt === "display" || fmt === "rss" || fmt === "text" || fmt === "json" ? fmt : defaultFormat;
+  const topic = (k: string) => csv(k).filter((t) => (TOPICS as readonly string[]).includes(t));
   const minP = (params.get("minPriority") ?? params.get("min_priority") ?? "low").toLowerCase();
   return {
     regions: csv("region").filter((r) => (REGIONS as readonly string[]).includes(r)),
-    topics: csv("topic").filter((t) => (TOPICS as readonly string[]).includes(t)),
+    topics: topic("topic"),
+    excludeTopics: topic("excludeTopic"),
     minPriority: PRIORITY_RANK[minP as keyof typeof PRIORITY_RANK] ?? 1,
     breakingOnly: bool("breaking", false),
     limit: int("limit", 20, 1, 100),
-    summaries: bool("summary", true),
+    // The display format has no summaries, so don't spend work (or a cache variant) on them.
+    summaries: format === "display" ? false : bool("summary", true),
     maxSummary: int("maxSummary", 400, 40, 2000),
-    ascii: bool("ascii", false),
-    format: fmt === "compact" || fmt === "rss" || fmt === "text" || fmt === "json" ? fmt : defaultFormat,
+    // The display format is for e-ink fonts without accents, so it folds to ASCII unless asked not to.
+    ascii: bool("ascii", format === "display"),
+    format,
   };
 }
 
@@ -55,6 +62,7 @@ export function queryKey(q: ApiQuery): string {
     q.format,
     q.regions.slice().sort().join("+") || "all",
     q.topics.slice().sort().join("+") || "all",
+    q.excludeTopics.slice().sort().join("+") || "none",
     q.minPriority,
     q.breakingOnly ? 1 : 0,
     q.limit,
@@ -69,6 +77,7 @@ export function selectStories(snapshot: Snapshot, q: ApiQuery): PublicStory[] {
   return snapshot.stories
     .filter((s) => !q.regions.length || q.regions.includes(s.region))
     .filter((s) => !q.topics.length || q.topics.includes(s.topic))
+    .filter((s) => !q.excludeTopics.includes(s.topic))
     .filter((s) => PRIORITY_RANK[s.priority] >= q.minPriority)
     .filter((s) => !q.breakingOnly || s.breaking)
     .slice(0, q.limit)
@@ -114,6 +123,17 @@ export function renderCompact(snapshot: Snapshot, stories: PublicStory[]): strin
       if (s.summary) item.s = s.summary;
       return item;
     }),
+  });
+}
+
+/**
+ * The smallest useful response, for a display that only prints a list of headlines:
+ * {"items":[{"title":"…","source":"…"}]}. No timestamps, ids, URLs or summaries, so five
+ * stories are well under 1 KB and a microcontroller can parse them with a tiny JSON buffer.
+ */
+export function renderDisplay(stories: PublicStory[]): string {
+  return JSON.stringify({
+    items: stories.map((s) => ({ title: s.headline, source: s.sources[0]?.name ?? "" })),
   });
 }
 

@@ -61,6 +61,7 @@ Create a key in `/admin` → API keys. The key is shown once; only its SHA-256 h
 ```
 GET /api/v1/news                JSON
 GET /api/v1/news.compact.json   short keys, no URLs: for microcontrollers
+GET /api/v1/news.display.json   only headline and outlet: for e-ink headline lists
 GET /api/v1/news.rss            RSS 2.0
 GET /api/v1/news.txt            plain text
 ```
@@ -77,13 +78,14 @@ GET /api/v1/news.txt            plain text
 | --- | --- | --- |
 | `region` | `local`, `national`, `europe`, `world` (comma-separated) | all |
 | `topic` | `politics`, `economy`, `society`, `crime`, `health`, `science`, `technology`, `environment`, `culture`, `sports`, `mobility`, `weather`, `other` | all |
+| `excludeTopic` | topics to leave out (comma-separated), e.g. `sports` | none |
 | `minPriority` | `low`, `medium`, `high` | `low` |
 | `breaking` | `1` = only breaking stories | off |
 | `limit` | 1–100 | 20 |
 | `summary` | `0` = headlines only | `1` |
 | `maxSummary` | 40–2000 characters | 400 |
-| `ascii` | `1` = fold accents and typographic quotes to plain ASCII, for display fonts without them | off |
-| `format` | `json`, `compact`, `rss`, `text` | `json` |
+| `ascii` | `1` = fold accents and typographic quotes to plain ASCII, for display fonts without them | off (on for `display`) |
+| `format` | `json`, `compact`, `display`, `rss`, `text` | `json` |
 
 Each key is limited to 30 requests per minute. The data changes at 6:07, 12:07, 16:07 and 20:07 Brussels time.
 
@@ -106,6 +108,19 @@ The keys are:
 - `a`: last update (Unix seconds)
 - `o`: outlet (first source)
 - `l`: language of headline and summary (ISO 639-1), when known
+
+**Display format:** just what a headline list prints, in plain keys. Accents are folded to ASCII unless you pass `ascii=0`, and summaries are never included. Five stories are a few hundred bytes.
+
+```json
+{"items":[{"title":"Gevangenisbewaker aangevallen in Brugse gevangenis","source":"HLN"}]}
+```
+
+`source` is the first outlet that reported the story. The [Inkplate dashboard](https://github.com/atlesque/inkplate-6-dashboard) reads its five Bruges headlines in one call:
+
+```
+GET /api/v1/news.display.json?region=local&excludeTopic=sports&limit=5
+X-API-Key: nk_…
+```
 
 ESP32 sketch:
 

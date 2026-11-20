@@ -7,7 +7,7 @@
 //   4. Only then is D1 read: one small row.
 
 import { HttpError, json } from "./http.ts";
-import { parseQuery, queryKey, renderCompact, renderJson, renderRss, renderText, selectStories, type Format } from "./formats.ts";
+import { parseQuery, queryKey, renderCompact, renderDisplay, renderJson, renderRss, renderText, selectStories, type Format } from "./formats.ts";
 import type { Snapshot } from "./rank.ts";
 import { sha256Hex } from "./text.ts";
 
@@ -103,6 +103,7 @@ async function authenticate(request: Request, env: Env, ctx: ExecutionContext, u
 const CONTENT_TYPES: Record<Format, string> = {
   json: "application/json; charset=utf-8",
   compact: "application/json; charset=utf-8",
+  display: "application/json; charset=utf-8",
   rss: "application/rss+xml; charset=utf-8",
   text: "text/plain; charset=utf-8",
 };
@@ -136,7 +137,9 @@ export async function keyedNews(request: Request, env: Env, ctx: ExecutionContex
       ? renderRss(latest.snapshot, stories, env.SITE_URL, selfUrl.toString())
       : q.format === "compact"
         ? renderCompact(latest.snapshot, stories)
-        : q.format === "text"
+        : q.format === "display"
+          ? renderDisplay(stories)
+          : q.format === "text"
           ? renderText(latest.snapshot, stories)
           : renderJson(latest.snapshot, stories);
 
