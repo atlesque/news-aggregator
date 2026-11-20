@@ -7,9 +7,10 @@
 //   4. Only then is D1 read: one small row.
 
 import { HttpError, json } from "./http.ts";
-import { parseQuery, queryKey, renderCompact, renderDisplay, renderJson, renderRss, renderText, selectStories, type Format } from "./formats.ts";
+import { displayItems, parseQuery, queryKey, renderCompact, renderDisplay, renderJson, renderRss, renderText, selectStories, type Format } from "./formats.ts";
 import type { Snapshot } from "./rank.ts";
 import { sha256Hex } from "./text.ts";
+import { localTime, parseWeatherQuery, rawForecast, shapeWeather } from "./weather.ts";
 
 const EDGE_TTL = 300;
 const BROWSER_TTL = 300;
@@ -156,4 +157,39 @@ export async function keyedNews(request: Request, env: Env, ctx: ExecutionContex
   const out = notModified(request, etag, cacheControl) ?? new Response(res.body, res);
   out.headers.set("Cache-Control", cacheControl);
   return out;
+}
+
+/**
+ * GET /api/v1/dashboard.json: everything an e-ink dashboard draws, in one keyed call.
+ *
+ *   {"now":"2026-11-20T15:47:12","weather":{…},"news":[{"title":"…","source":"…"}]}
+ *
+ * `now` is the local time in `tz` (for the device's clock). `weather` is the current conditions,
+ * the next 13 hours and today plus 5 days, or null when the forecast is unavailable, so the device
+ * can keep what it showed. `news` takes the same query parameters as the display format.
+ * Weather location: `lat`, `lon` and `tz` (default Bruges, Europe/Brussels).
+ */
+export async function keyedDashboard(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  await authenticate(request, env, ctx, url);
+
+  const q = parseQuery(url.searchParams, "display");
+  q.format = "display";
+  const wq = parseWeatherQuery(url.searchParams);
+  const [latest, raw] = await Promise.all([latestSnapshot(env.DB), rawForecast(wq, ctx)]);
+  const now = localTime(Date.now(), wq.tz);
+  const body = JSON.stringify({
+    now,
+    weather: raw ? shapeWeather(raw, now) : null,
+    news: latest ? displayItems(selectStories(latest.snapshot, q)) : [],
+  });
+  // Not cached: the clock and the current hour change, and building it is cheap. Content-Length
+  // matters because the ESP32 modem sizes its read buffer from a HEAD-style probe first.
+  return new Response(body, {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Content-Length": String(new TextEncoder().encode(body).byteLength),
+    },
+  });
 }

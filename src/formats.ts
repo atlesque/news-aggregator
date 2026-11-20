@@ -132,9 +132,11 @@ export function renderCompact(snapshot: Snapshot, stories: PublicStory[]): strin
  * stories are well under 1 KB and a microcontroller can parse them with a tiny JSON buffer.
  */
 export function renderDisplay(stories: PublicStory[]): string {
-  return JSON.stringify({
-    items: stories.map((s) => ({ title: s.headline, source: s.sources[0]?.name ?? "" })),
-  });
+  return JSON.stringify({ items: displayItems(stories) });
+}
+
+export function displayItems(stories: PublicStory[]): { title: string; source: string }[] {
+  return stories.map((s) => ({ title: s.headline, source: s.sources[0]?.name ?? "" }));
 }
 
 export function renderText(snapshot: Snapshot, stories: PublicStory[]): string {
