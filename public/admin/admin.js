@@ -327,12 +327,13 @@ function keysPanel() {
         {},
         `GET /api/v1/news            JSON (default)
 GET /api/v1/news.compact.json  short keys, no URLs, for microcontrollers
+GET /api/v1/news.display.json  {"items":[{"title","source"}]}, ASCII: for e-ink headline lists
 GET /api/v1/news.rss        RSS 2.0
 GET /api/v1/news.txt        plain text
 
 Auth: "Authorization: Bearer nk_…", "X-API-Key: nk_…" or ?key=nk_…
-Query: region=local,national,europe,world  topic=politics,…  minPriority=low|medium|high
-       breaking=1  limit=1..100 (20)  summary=0|1  maxSummary=40..2000 (400)  ascii=1  format=json|compact|rss|text
+Query: region=local,national,europe,world  topic=politics,…  excludeTopic=sports,…  minPriority=low|medium|high
+       breaking=1  limit=1..100 (20)  summary=0|1  maxSummary=40..2000 (400)  ascii=1  format=json|compact|display|rss|text
 Rate limit: 30 requests/minute per key. The data changes at 6:07, 12:07, 16:07 and 20:07 Brussels time; responses carry ETags.`,
       ),
     ),

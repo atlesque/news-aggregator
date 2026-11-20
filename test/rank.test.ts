@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseQuery, renderCompact, selectStories } from "../src/formats.ts";
+import { parseQuery, queryKey, renderCompact, renderDisplay, selectStories } from "../src/formats.ts";
 import { parseEnrichment } from "../src/enrich.ts";
 import { buildSnapshot, type StoryInput } from "../src/rank.ts";
 import { isRefreshTime, nextRefresh } from "../src/schedule.ts";
@@ -101,6 +101,27 @@ test("API filters and compact output", () => {
   assert.equal(out.i[0].l, undefined);
   assert.equal(out.i[0].h, "Oekraine");
   assert.equal(out.i[0].p, 3);
+});
+
+test("display output: only headline and outlet, ASCII by default, topics can be left out", () => {
+  const snap = buildSnapshot(
+    [
+      story(1, { priority: 3, headline: "Brugse café’s krijgen terras", sources: TWO }),
+      story(2, { topic: "sports", headline: "Club Brugge wint" }),
+      story(3, { region: "national", headline: "Elders" }),
+    ],
+    DEFAULT_SETTINGS,
+    now,
+  );
+  const q = parseQuery(new URLSearchParams("region=local&excludeTopic=sports,bogus&limit=5"), "display");
+  assert.deepEqual(q.excludeTopics, ["sports"]);
+  assert.equal(q.ascii, true);
+  assert.equal(q.summaries, false);
+  const out = JSON.parse(renderDisplay(selectStories(snap, q)));
+  assert.deepEqual(out, { items: [{ title: "Brugse cafe's krijgen terras", source: "a" }] });
+  // ascii=0 keeps accents, and excluded topics give the query its own cache key.
+  assert.equal(parseQuery(new URLSearchParams("ascii=0"), "display").ascii, false);
+  assert.notEqual(queryKey(q), queryKey(parseQuery(new URLSearchParams("region=local&limit=5"), "display")));
 });
 
 test("AI output is validated against the story's allowed regions", () => {
