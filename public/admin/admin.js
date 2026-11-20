@@ -328,6 +328,7 @@ function keysPanel() {
         `GET /api/v1/news            JSON (default)
 GET /api/v1/news.compact.json  short keys, no URLs, for microcontrollers
 GET /api/v1/news.display.json  {"items":[{"title","source"}]}, ASCII: for e-ink headline lists
+GET /api/v1/dashboard.json     {"now","weather","news"}: e-ink dashboard in one call (lat, lon, tz)
 GET /api/v1/news.rss        RSS 2.0
 GET /api/v1/news.txt        plain text
 

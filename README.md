@@ -27,6 +27,7 @@ Each step runs in its own invocation with its own CPU budget and retries indepen
 | `/`, `/local`, `/story/12`, … and the app's JS/CSS | Workers Static Assets | Free and unlimited; the Worker doesn't run |
 | `/api/public/news.json` (front page data) | Worker → edge cache → isolate memory → one D1 row | One cheap Worker request |
 | `/api/v1/news*` (keyed API) | Worker → per-query edge cache | One cheap Worker request |
+| `/api/v1/dashboard.json` (keyed) | Worker → snapshot in memory + Open-Meteo, cached 10 min per location | One cheap Worker request |
 
 JSON responses carry `Cache-Control: max-age=300` and an `ETag`, so browsers and devices revalidate with a 304 instead of downloading again. The edge cache serves repeat requests from each Cloudflare location without touching D1. The AI only runs in the refresh Workflow, never on a request. Traffic doesn't change AI usage.
 
@@ -121,6 +122,27 @@ The keys are:
 GET /api/v1/news.display.json?region=local&excludeTopic=sports&limit=5
 X-API-Key: nk_…
 ```
+
+**Dashboard:** weather and headlines in one call, for a device that draws both. Same key and the same news parameters as the display format, plus the weather location:
+
+```
+GET /api/v1/dashboard.json?region=local&excludeTopic=sports&limit=5&lat=51.21&lon=3.22&tz=Europe/Brussels
+X-API-Key: nk_…
+```
+
+```json
+{"now":"2026-11-20T15:47:12",
+ "weather":{"temp":8.1,"feels":5.3,"code":3,"night":0,
+   "hours":[{"hour":15,"temp":8.1,"code":3,"rain":20,"night":0}, …13 hours],
+   "days":[{"date":"2026-11-20","hi":9.1,"lo":4,"code":3,"rain":40}, …6 days]},
+ "news":[{"title":"…","source":"HLN"}, …]}
+```
+
+- `now`: the local time in `tz`, for the device's clock.
+- `weather`: from [Open-Meteo](https://open-meteo.com), fetched by the Worker at most every 10 minutes per location. `code` is the WMO weather code, `night` is 1 between sunset and sunrise, `rain` is the chance of precipitation in % (left out when unknown). The hours start at the current hour; the days start today. `null` when the forecast is unavailable.
+- `lat`, `lon`, `tz` default to Bruges and `Europe/Brussels`.
+
+The whole response is about 1.5 KB and isn't cached, so `now` and the current hour are always fresh.
 
 ESP32 sketch:
 
